@@ -1,0 +1,14 @@
+{
+  "name": "xterm-terminal",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "eslint --no-eslintrc --env browser --env es2021 static/terminal.js",
+    "check": "prettier --check static/terminal.js",
+    "format": "prettier --write static/terminal.js"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "prettier": "^3"
+  }
+}

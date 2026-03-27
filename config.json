@@ -1,0 +1,15 @@
+// This file is parsed with JSON5. In addition to JSONC-style comments
+// (// and /* */), JSON5 extensions such as unquoted keys and trailing
+// commas are supported.
+{
+  shell: {
+    umask: "022", // octal string
+    cwd: ".",
+    path: "/usr/bin/zsh",
+    args: ["zsh", "-l"],
+    env: {
+      HOME: "{HOME}",
+      TERM: "xterm-256color",
+    },
+  },
+}

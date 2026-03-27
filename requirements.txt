@@ -1,0 +1,4 @@
+python-socketio==5.16.1
+uvicorn==0.42.0
+starlette==1.0.0
+json5==0.14.0

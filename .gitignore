@@ -1,0 +1,8 @@
+.mypy_cache/
+__pycache__/
+node_modules/
+npm-cache/
+pybase/
+requirements.pkgs/
+requirements.zip
+venv/
