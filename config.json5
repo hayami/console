@@ -5,15 +5,15 @@
   server: {
     host: "127.0.0.1",      // host name or IP address
     port: "9000",           // port name or number
-    socket: "",             // If socket is non-empty, host and port are ignored
-    cors_allowed_origins: "*",
-    keyin_timeout: 0,       // seconds; 0 disables key input timeout
-    no_session_timeout: 0,  // seconds; 0 disables no-session auto-shutdown
+    socket: "{SOCK}",       // If socket is non-empty, host and port are ignored
+    cors_allowed_origins: [ "https://soba.undo.jp" ],
+    keyin_timeout: 900,     // seconds; 0 disables key input timeout
+    no_session_timeout: 30, // seconds; 0 disables no-session auto-shutdown
   },
   shell: {
     umask: "022",            // octal string
     cwd: ".",
-    path: "/usr/bin/zsh",
+    path: "/usr/local/bin/zsh",
     args: ["zsh", "-l"],
     env: {
       HOME: "{HOME}",
