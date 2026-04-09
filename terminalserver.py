@@ -197,7 +197,7 @@ async def _cleanup_session(sid: str) -> None:
 # Socket.IO server
 # ---------------------------------------------------------------------------
 sio: socketio.AsyncServer = socketio.AsyncServer(
-    async_mode="asgi", cors_allowed_origins="*",
+    async_mode="asgi", cors_allowed_origins=config.CORS_ALLOWED_ORIGINS,
     ping_timeout=3.0, ping_interval=5.0,
 )
 
@@ -314,10 +314,14 @@ app: socketio.ASGIApp = socketio.ASGIApp(sio, _starlette, socketio_path="sio")
 _uvicorn_server: uvicorn.Server | None = None
 
 if __name__ == "__main__":
-    _uvicorn_config = uvicorn.Config(
-        app, host="127.0.0.1", port=9000,
-        timeout_graceful_shutdown=10.0,
-    )
+    _uvicorn_kwargs: dict[str, Any] = {}
+    if config.SOCKET:
+        _uvicorn_kwargs["uds"] = config.SOCKET
+    else:
+        _uvicorn_kwargs["host"] = config.HOST
+        _uvicorn_kwargs["port"] = config.PORT
+    _uvicorn_kwargs["timeout_graceful_shutdown"] = 10.0
+    _uvicorn_config = uvicorn.Config(app, **_uvicorn_kwargs)
     _uvicorn_server = uvicorn.Server(_uvicorn_config)
     with contextlib.suppress(KeyboardInterrupt):
         _uvicorn_server.run()
