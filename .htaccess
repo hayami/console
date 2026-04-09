@@ -1,0 +1,25 @@
+DirectoryIndex index.cgi
+AddHandler cgi-script .cgi
+Options +ExecCGI
+
+
+# Rewrite Flags used here
+#   [F]     Forbidden
+#   [P]     Proxy
+#   [QSA]   Query strings are combined
+#   [END]   End
+#
+RewriteEngine	on
+
+# ENV:TMPSID is assumed to be unused, but even if ENV:TMPSID already contains
+# some string, its format is validated so that no harm is expected to occur.
+
+# Copy the value of 'session-id' in HTTP cookie to ENV:TMPSID if exsits
+RewriteCond	%{HTTP_COOKIE}	(^|[;\s])session-id=([^;\s]+)([;\s]|$)
+RewriteRule	.*		-	[E=TMPSID:%2]
+
+# Rules for Proxying
+RewriteCond	%{HTTPS}	=on
+RewriteCond	%{ENV:TMPSID}	^[0-9a-zA-Z]+([.-][0-9a-zA-Z]+)*$
+RewriteCond	%{REQUEST_URI}	^(.*?)/-($|/)
+RewriteRule	^-(|/(.*))$	unix:%{DOCUMENT_ROOT}/%1/tmp/console-%{ENV:TMPSID}/unix|http://%{HTTP_HOST}/$2	[P,QSA,END]
