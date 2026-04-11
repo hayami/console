@@ -3,13 +3,13 @@
 // commas are supported.
 {
   server: {
-    host: "127.0.0.1", // host name or IP address
-    port: "9000", // port name or number
-    socket: "", // If set, socket will be used even if host and/or port are set
+    host: "127.0.0.1",  // host name or IP address
+    port: "9000",       // port name or number
+    socket: "",         // If socket is non-empty, host and port are ignored
     cors_allowed_origins: "*",
   },
   shell: {
-    umask: "022", // octal string
+    umask: "022",        // octal string
     cwd: ".",
     path: "/usr/bin/zsh",
     args: ["zsh", "-l"],
