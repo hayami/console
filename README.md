@@ -25,7 +25,7 @@ make run
 This downloads the required Python packages and starts the server on
 `http://127.0.0.1:9000/`.  Open the URL in a browser to access the terminal.
 
-Edit `config.json` to change the shell path, arguments, and environment.
+Edit `config.json5` to change the shell path, arguments, and environment.
 See the `Makefile` for other operations (`make usage`).
 
 ## Disclaimer
