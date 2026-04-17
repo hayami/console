@@ -7,6 +7,7 @@
     port: "9000",       // port name or number
     socket: "",         // If socket is non-empty, host and port are ignored
     cors_allowed_origins: "*",
+    keyin_timeout: 0,   // seconds; 0 disables key input timeout
   },
   shell: {
     umask: "022",        // octal string

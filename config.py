@@ -72,6 +72,23 @@ else:
         " or a list of strings"
     )
 
+_keyin_timeout_raw = _server_config.get("keyin_timeout", 0)
+try:
+    if isinstance(_keyin_timeout_raw, bool):
+        raise ValueError
+    elif isinstance(_keyin_timeout_raw, int):
+        KEYIN_TIMEOUT: int = _keyin_timeout_raw
+    elif isinstance(_keyin_timeout_raw, str):
+        KEYIN_TIMEOUT: int = int(_keyin_timeout_raw.strip())
+    else:
+        raise ValueError
+    if KEYIN_TIMEOUT < 0:
+        raise ValueError
+except (TypeError, ValueError):
+    raise SystemExit(
+        f"{CONFIG_FILE}: server.keyin_timeout must be a non-negative integer"
+    )
+
 _shell_config: dict[str, Any] = _config.get("shell", {})
 if not isinstance(_shell_config, dict):
     raise SystemExit(f"{CONFIG_FILE}: shell must be an object")

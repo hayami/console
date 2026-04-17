@@ -30,6 +30,7 @@ class PtySession:
     pid: int
     master_fd: int
     reaped: bool = False
+    keyin_event: asyncio.Event | None = None
 
 
 sessions: dict[str, PtySession] = {}
@@ -193,6 +194,28 @@ async def _cleanup_session(sid: str) -> None:
                 )
 
 
+async def _keyin_watcher(sid: str) -> None:
+    """Disconnect the session after keyin_timeout seconds without key input."""
+    session = sessions.get(sid)
+    if session is None:
+        return
+    while True:
+        session.keyin_event.clear()
+        try:
+            await asyncio.wait_for(
+                session.keyin_event.wait(), timeout=config.KEYIN_TIMEOUT,
+            )
+        except TimeoutError:
+            with contextlib.suppress(Exception):
+                await sio.emit(
+                    "close-connection",
+                    f"key input timeout ({config.KEYIN_TIMEOUT}s)",
+                    to=sid,
+                )
+            await _cleanup_session(sid)
+            return
+
+
 # ---------------------------------------------------------------------------
 # Socket.IO server
 # ---------------------------------------------------------------------------
@@ -218,6 +241,9 @@ async def connect(
     loop = asyncio.get_running_loop()
     sessions[sid] = PtySession(pid=pid, master_fd=master_fd)
     loop.add_reader(master_fd, _on_pty_readable, sid, master_fd, loop)
+    if config.KEYIN_TIMEOUT > 0:
+        sessions[sid].keyin_event = asyncio.Event()
+        loop.create_task(_keyin_watcher(sid))
 
 
 @sio.event  # type: ignore[untyped-decorator]
@@ -230,6 +256,8 @@ async def input(sid: str, data: str) -> None:
     session = sessions.get(sid)
     if session is None:
         return
+    if session.keyin_event is not None:
+        session.keyin_event.set()
     loop = asyncio.get_running_loop()
     buf = data.encode()
     while buf:
