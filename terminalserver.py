@@ -194,7 +194,7 @@ async def _cleanup_session(sid: str) -> None:
                 )
 
 
-async def _keyin_watcher(sid: str) -> None:
+async def _keyin_timeout_handler(sid: str) -> None:
     """Disconnect the session after keyin_timeout seconds without key input."""
     session = sessions.get(sid)
     if session is None:
@@ -243,7 +243,7 @@ async def connect(
     loop.add_reader(master_fd, _on_pty_readable, sid, master_fd, loop)
     if config.KEYIN_TIMEOUT > 0:
         sessions[sid].keyin_event = asyncio.Event()
-        loop.create_task(_keyin_watcher(sid))
+        loop.create_task(_keyin_timeout_handler(sid))
 
 
 @sio.event  # type: ignore[untyped-decorator]
