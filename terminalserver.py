@@ -31,6 +31,7 @@ class PtySession:
     master_fd: int
     reaped: bool = False
     keyin_event: asyncio.Event | None = None
+    keyin_task: asyncio.Task[None] | None = None
 
 
 sessions: dict[str, PtySession] = {}
@@ -174,6 +175,10 @@ async def _cleanup_session(sid: str) -> None:
     session = sessions.pop(sid, None)
     if session is None:
         return
+    if session.keyin_event is not None:
+        session.keyin_event = None
+    if session.keyin_task is not None:
+        session.keyin_task.cancel()
     loop = asyncio.get_running_loop()
     loop.remove_reader(session.master_fd)
     with contextlib.suppress(OSError):
@@ -222,6 +227,7 @@ async def _keyin_timeout_handler(sid: str) -> None:
                     f"key input timeout ({config.KEYIN_TIMEOUT}s)",
                     to=sid,
                 )
+            session.keyin_task = None
             await _cleanup_session(sid)
             return
 
@@ -270,7 +276,7 @@ async def connect(
     loop.add_reader(master_fd, _on_pty_readable, sid, master_fd, loop)
     if config.KEYIN_TIMEOUT > 0:
         sessions[sid].keyin_event = asyncio.Event()
-        loop.create_task(_keyin_timeout_handler(sid))
+        sessions[sid].keyin_task = loop.create_task(_keyin_timeout_handler(sid))
 
 
 @sio.event  # type: ignore[untyped-decorator]
