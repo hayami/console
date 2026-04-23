@@ -29,6 +29,7 @@ import config
 class PtySession:
     pid: int
     master_fd: int
+    tty_name: str
     reaped: bool = False
     keyin_event: asyncio.Event | None = None
     keyin_task: asyncio.Task[None] | None = None
@@ -76,7 +77,7 @@ def _exec_shell(slave_fd: int, execfail_w: int) -> None:
     os._exit(127)
 
 
-def _open_pty_session(cols: int, rows: int) -> tuple[int, int]:
+def _open_pty_session(cols: int, rows: int) -> tuple[int, int, str]:
     """Open a PTY, fork, exec the shell, and return *(pid, master_fd)*.
 
     The master fd is set to non-blocking before returning.
@@ -113,6 +114,7 @@ def _open_pty_session(cols: int, rows: int) -> tuple[int, int]:
         os.close(execfail_r)
         _exec_shell(slave_fd, execfail_w)  # never returns
 
+    tty_name = os.ttyname(slave_fd)
     os.close(execfail_w)
     os.close(slave_fd)
     exec_failed = os.read(execfail_r, 1) != b""
@@ -124,7 +126,7 @@ def _open_pty_session(cols: int, rows: int) -> tuple[int, int]:
             os.waitpid(pid, 0)
         raise RuntimeError("failed to exec shell")
 
-    return pid, master_fd
+    return pid, master_fd, tty_name
 
 
 async def _handle_shell_exit(sid: str) -> None:
@@ -261,14 +263,14 @@ async def connect(
     cols, rows = _parse_size(auth or {})
 
     try:
-        pid, master_fd = _open_pty_session(cols, rows)
+        pid, master_fd, tty_name = _open_pty_session(cols, rows)
     except (RuntimeError, OSError) as e:
         with contextlib.suppress(Exception):
             await sio.emit("close-connection", str(e), to=sid)
         return
 
     loop = asyncio.get_running_loop()
-    sessions[sid] = PtySession(pid=pid, master_fd=master_fd)
+    sessions[sid] = PtySession(pid=pid, master_fd=master_fd, tty_name=tty_name)
     if config.NO_SESSION_TIMEOUT > 0:
         if not (_timeout_task is None or _timeout_task.done()):
             _timeout_task.cancel()
