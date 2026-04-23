@@ -35,6 +35,8 @@ class PtySession:
 
 sessions: dict[str, PtySession] = {}
 
+_timeout_task: asyncio.Task[None] | None = None
+
 
 def _parse_size(data: dict[str, Any]) -> tuple[int, int]:
     """Extract (cols, rows) from *data*, clamped to [1, 4096]."""
@@ -168,6 +170,7 @@ def _on_pty_readable(
 
 async def _cleanup_session(sid: str) -> None:
     """Remove *sid* and kill its child process.  Idempotent."""
+    global _timeout_task
     session = sessions.pop(sid, None)
     if session is None:
         return
@@ -193,12 +196,19 @@ async def _cleanup_session(sid: str) -> None:
                     timeout=1.0,
                 )
 
+    if config.NO_SESSION_TIMEOUT > 0 and not _sessions:
+        if _timeout_task is None or _timeout_task.done():
+            _timeout_task = loop.create_task(_no_session_timeout_handler())
+
+    _logger.info(f"Session closed on {session.tty_name}")
+
 
 async def _keyin_timeout_handler(sid: str) -> None:
     """Disconnect the session after keyin_timeout seconds without key input."""
     session = sessions.get(sid)
     if session is None:
         return
+    assert session.keyin_event is not None
     while True:
         session.keyin_event.clear()
         try:
@@ -216,6 +226,18 @@ async def _keyin_timeout_handler(sid: str) -> None:
             return
 
 
+async def _no_session_timeout_handler() -> None:
+    """Shut down the server on no-session timeout."""
+    try:
+        await asyncio.sleep(config.NO_SESSION_TIMEOUT)
+    except asyncio.CancelledError:
+        return
+    if sessions:
+        return
+    if _uvicorn_server is not None:
+        _uvicorn_server.should_exit = True
+
+
 # ---------------------------------------------------------------------------
 # Socket.IO server
 # ---------------------------------------------------------------------------
@@ -229,6 +251,7 @@ sio: socketio.AsyncServer = socketio.AsyncServer(
 async def connect(
     sid: str, environ: dict[str, Any], auth: dict[str, Any] | None = None
 ) -> None:
+    global _timeout_task
     cols, rows = _parse_size(auth or {})
 
     try:
@@ -240,6 +263,10 @@ async def connect(
 
     loop = asyncio.get_running_loop()
     sessions[sid] = PtySession(pid=pid, master_fd=master_fd)
+    if config.NO_SESSION_TIMEOUT > 0:
+        if not (_timeout_task is None or _timeout_task.done()):
+            _timeout_task.cancel()
+        _timeout_task = None
     loop.add_reader(master_fd, _on_pty_readable, sid, master_fd, loop)
     if config.KEYIN_TIMEOUT > 0:
         sessions[sid].keyin_event = asyncio.Event()
@@ -291,6 +318,7 @@ async def resize(sid: str, data: dict[str, int]) -> None:
 # ASGI app
 # ---------------------------------------------------------------------------
 async def _lifespan(_: Any) -> AsyncIterator[None]:
+    global _timeout_task
     shutdown_event = asyncio.Event()
 
     async def _shutdown_notifier() -> None:
@@ -316,6 +344,9 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
 
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         loop.add_signal_handler(sig, _on_signal)
+
+    if config.NO_SESSION_TIMEOUT > 0:
+        _timeout_task = loop.create_task(_no_session_timeout_handler())
 
     yield
 

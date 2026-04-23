@@ -3,14 +3,15 @@
 // commas are supported.
 {
   server: {
-    host: "127.0.0.1",  // host name or IP address
-    port: "9000",       // port name or number
-    socket: "",         // If socket is non-empty, host and port are ignored
+    host: "127.0.0.1",      // host name or IP address
+    port: "9000",           // port name or number
+    socket: "",             // If socket is non-empty, host and port are ignored
     cors_allowed_origins: "*",
-    keyin_timeout: 0,   // seconds; 0 disables key input timeout
+    keyin_timeout: 0,       // seconds; 0 disables key input timeout
+    no_session_timeout: 0,  // seconds; 0 disables no-session auto-shutdown
   },
   shell: {
-    umask: "022",        // octal string
+    umask: "022",            // octal string
     cwd: ".",
     path: "/usr/bin/zsh",
     args: ["zsh", "-l"],
