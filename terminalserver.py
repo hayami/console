@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import fcntl
+import logging
 import os
 import signal
 import struct
@@ -20,6 +21,8 @@ import starlette.staticfiles
 import uvicorn
 
 import config
+
+_logger = logging.getLogger("uvicorn")
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +206,7 @@ async def _cleanup_session(sid: str) -> None:
                     timeout=1.0,
                 )
 
-    if config.NO_SESSION_TIMEOUT > 0 and not _sessions:
+    if config.NO_SESSION_TIMEOUT > 0 and not sessions:
         if _timeout_task is None or _timeout_task.done():
             _timeout_task = loop.create_task(_no_session_timeout_handler())
 
@@ -229,6 +232,7 @@ async def _keyin_timeout_handler(sid: str) -> None:
                     f"key input timeout ({config.KEYIN_TIMEOUT}s)",
                     to=sid,
                 )
+            _logger.info(f"Key input timeout ({config.KEYIN_TIMEOUT}s) on {session.tty_name}")
             session.keyin_task = None
             await _cleanup_session(sid)
             return
@@ -243,6 +247,8 @@ async def _no_session_timeout_handler() -> None:
     if sessions:
         return
     if _uvicorn_server is not None:
+        msg = f"No sessions for {config.NO_SESSION_TIMEOUT}s, shutting down"
+        _logger.info(msg)
         _uvicorn_server.should_exit = True
 
 
@@ -279,6 +285,8 @@ async def connect(
     if config.KEYIN_TIMEOUT > 0:
         sessions[sid].keyin_event = asyncio.Event()
         sessions[sid].keyin_task = loop.create_task(_keyin_timeout_handler(sid))
+
+    _logger.info(f"New session on {tty_name}")
 
 
 @sio.event  # type: ignore[untyped-decorator]
