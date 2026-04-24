@@ -24,7 +24,7 @@ def _expand_env(obj: Any) -> Any:
 
 _config: dict[str, Any] = {}
 with contextlib.suppress(FileNotFoundError):
-    with open(f"{CONFIG_FILE}") as _f:
+    with open(CONFIG_FILE) as _f:
         try:
             _config = json5.load(_f)
         except ValueError as e:
