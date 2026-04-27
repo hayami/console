@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import fcntl
 import logging
 import os
@@ -444,6 +445,15 @@ if __name__ == "__main__":
         _uvicorn_kwargs["host"] = config.HOST
         _uvicorn_kwargs["port"] = config.PORT
     _uvicorn_kwargs["timeout_graceful_shutdown"] = 10.0
+
+    _log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
+    for i in ("default", "access"):
+        f = _log_config["formatters"][i]
+        f["datefmt"] = "%Y-%m-%dT%H:%M:%S%z"
+        f["fmt"] = "%(asctime)s " + f['fmt']
+    _log_config["loggers"]["uvicorn.access"]["level"] = "WARNING"
+    _uvicorn_kwargs["log_config"] = _log_config
+
     _uvicorn_config = uvicorn.Config(app, **_uvicorn_kwargs)
     _uvicorn_server = uvicorn.Server(_uvicorn_config)
     with contextlib.suppress(KeyboardInterrupt):
