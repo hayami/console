@@ -426,10 +426,14 @@ _starlette = starlette.applications.Starlette(
     routes=[
         starlette.routing.Route(
             "/",
-            lambda _: starlette.responses.FileResponse("static/_index.html"),
+            lambda _: starlette.responses.FileResponse(
+                f"{config.BASE_DIR}/static/_index.html"
+            ),
         ),
         starlette.routing.Mount(
-            "/static", starlette.staticfiles.StaticFiles(directory="static")
+            "/static", starlette.staticfiles.StaticFiles(
+                directory=f"{config.BASE_DIR}/static"
+            ),
         ),
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),

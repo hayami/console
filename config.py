@@ -5,9 +5,11 @@ import contextlib
 import json5
 import os
 import socket
+from pathlib import Path
 from typing import Any
 
 
+BASE_DIR = Path(__file__).parent
 CONFIG_FILE = "config.json5"
 
 
@@ -24,7 +26,7 @@ def _expand_env(obj: Any) -> Any:
 
 _config: dict[str, Any] = {}
 with contextlib.suppress(FileNotFoundError):
-    with open(CONFIG_FILE) as _f:
+    with open(BASE_DIR / CONFIG_FILE) as _f:
         try:
             _config = json5.load(_f)
         except ValueError as e:
