@@ -62,19 +62,7 @@ def _exec_shell(slave_fd: int, execfail_w: int) -> None:
     On failure, writes to *execfail_w* and calls ``os._exit(127)``.
     """
     try:
-        os.setsid()
-
-        tty_name = os.ttyname(slave_fd)
-        os.close(slave_fd)
-        slave_fd = os.open(tty_name, os.O_RDWR)
-        # Reopen sets ctty on FreeBSD; TIOCSCTTY is needed on Linux.
-        with contextlib.suppress(OSError):
-            fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
-
-        for fd in range(3):
-            os.dup2(slave_fd, fd)
-        if slave_fd > 2:
-            os.close(slave_fd)
+        os.login_tty(slave_fd)
 
         # Close all inherited fds (other sessions' master_fds,
         # listening sockets, etc.) except execfail_w.
