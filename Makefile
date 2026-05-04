@@ -7,6 +7,9 @@ pip	= $(pip3)
 .PHONY:	default
 default: usage
 
+.PHONY:	zip
+zip: requirements.zip
+
 .PHONY:	run
 run: run-using-zip
 
@@ -18,6 +21,7 @@ usage:
 	@echo 'make check'
 	@echo 'make js-check'
 	@echo 'make py-check'
+	@echo 'make zip'
 	@echo 'make run'
 	@echo 'make run-using-venv'
 	@echo 'make run-using-pybase'
