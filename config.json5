@@ -3,7 +3,7 @@
 // commas are supported.
 {
   server: {
-    host: "127.0.0.1",      // host name or IP address
+    host: "localhost",      // host name or IP address
     port: "9000",           // port name or number
     socket: "",             // If socket is non-empty, host and port are ignored
     cors_allowed_origins: "*",

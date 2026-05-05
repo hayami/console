@@ -42,7 +42,7 @@ _server_config: dict[str, Any] = _config.get("server", {})
 if not isinstance(_server_config, dict):
     raise SystemExit(f"{CONFIG_FILE}: server must be an object")
 
-HOST: str = _server_config.get("host") or "127.0.0.1"
+HOST: str = _server_config.get("host") or "localhost"
 if not isinstance(HOST, str):
     raise SystemExit(f"{CONFIG_FILE}: server.host must be a string")
 
