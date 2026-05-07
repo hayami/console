@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Any
 
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).parent.parent
+STATIC_DIR = Path(__file__).parent / "static"
 CONFIG_FILE = "config.json5"
 
 

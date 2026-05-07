@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import copy
 import fcntl
 import logging
 import os
@@ -21,11 +20,11 @@ import starlette.routing
 import starlette.staticfiles
 import uvicorn
 
-import config
+from consoleserver import config
 
 
 _logger = logging.getLogger("uvicorn")
-_uvicorn_server: uvicorn.Server | None = None
+uvicorn_server: uvicorn.Server | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -260,14 +259,10 @@ async def _no_session_timeout_handler() -> None:
         return
     if _sessions:
         return
-    if _uvicorn_server is not None:
-        # NOTE: When running via ``uvicorn terminalserver:app``,
-        # _uvicorn_server is None because it is only set in
-        # ``if __name__ == "__main__"``, so this branch is
-        # skipped and the server will not shut down.
-        msg = f"No sessions for {config.NO_SESSION_TIMEOUT}s, shutting down"
-        _logger.info(msg)
-        _uvicorn_server.should_exit = True
+    msg = f"No sessions for {config.NO_SESSION_TIMEOUT}s, shutting down"
+    _logger.info(msg)
+    assert uvicorn_server is not None
+    uvicorn_server.should_exit = True
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +363,13 @@ async def resize(sid: str, data: dict[str, int]) -> bool:
 # ---------------------------------------------------------------------------
 async def _lifespan(_: Any) -> AsyncIterator[None]:
     global _timeout_task
+
+    if uvicorn_server is None:
+        raise SystemExit(
+            "Do not run this app directly with the uvicorn command.\n"
+            "Use: python -m consoleserver"
+        )
+
     shutdown_event = asyncio.Event()
 
     async def _shutdown_notifier() -> None:
@@ -377,15 +379,8 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
             with contextlib.suppress(Exception):
                 await sio.emit("close-connection", "server shutdown", to=sid)
         await asyncio.sleep(1.0)
-        if _uvicorn_server is not None:
-            # NOTE: When running via ``uvicorn terminalserver:app``,
-            # _uvicorn_server is None because it is only set in
-            # ``if __name__ == "__main__"``, so this branch is
-            # skipped and graceful shutdown will not work correctly.
-            #
-            # Uvicorn closes listening sockets and transports, then
-            # runs lifespan shutdown (post-yield) for final cleanup.
-            _uvicorn_server.should_exit = True
+        assert uvicorn_server is not None
+        uvicorn_server.should_exit = True
 
     def _on_signal() -> None:
         # Restore default handlers so a second signal force-kills.
@@ -415,38 +410,15 @@ _starlette = starlette.applications.Starlette(
         starlette.routing.Route(
             "/",
             lambda _: starlette.responses.FileResponse(
-                f"{config.BASE_DIR}/static/_index.html"
+                f"{config.STATIC_DIR}/_index.html"
             ),
         ),
         starlette.routing.Mount(
             "/static", starlette.staticfiles.StaticFiles(
-                directory=f"{config.BASE_DIR}/static"
+                directory=f"{config.STATIC_DIR}"
             ),
         ),
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),
 )
 app: socketio.ASGIApp = socketio.ASGIApp(sio, _starlette, socketio_path="sio")
-
-
-if __name__ == "__main__":
-    _uvicorn_kwargs: dict[str, Any] = {}
-    if config.SOCKET:
-        _uvicorn_kwargs["uds"] = config.SOCKET
-    else:
-        _uvicorn_kwargs["host"] = config.HOST
-        _uvicorn_kwargs["port"] = config.PORT
-    _uvicorn_kwargs["timeout_graceful_shutdown"] = 10.0
-
-    _log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
-    for i in ("default", "access"):
-        f = _log_config["formatters"][i]
-        f["datefmt"] = "%Y-%m-%dT%H:%M:%S%z"
-        f["fmt"] = "%(asctime)s " + f['fmt']
-    _log_config["loggers"]["uvicorn.access"]["level"] = "WARNING"
-    _uvicorn_kwargs["log_config"] = _log_config
-
-    _uvicorn_config = uvicorn.Config(app, **_uvicorn_kwargs)
-    _uvicorn_server = uvicorn.Server(_uvicorn_config)
-    with contextlib.suppress(KeyboardInterrupt):
-        _uvicorn_server.run()

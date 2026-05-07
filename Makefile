@@ -39,9 +39,9 @@ node_modules:
 
 .PHONY:	py-check
 py-check: venv/bin/flake8 venv/bin/mypy
-	venv/bin/flake8 terminalserver.py
+	venv/bin/flake8 consoleserver/
 	venv/bin/mypy --strict --ignore-missing-imports \
-	    --python-version $(py3ver) terminalserver.py
+	    --python-version $(py3ver) consoleserver/
 
 venv/bin/flake8: venv/bin/$(pip)
 	venv/bin/$(pip) install --quiet flake8
@@ -54,7 +54,7 @@ venv/bin/$(pip):
 
 .PHONY:	run-test
 run-test: pybase
-	PYTHONUSERBASE=$(PWD)/pybase $(python) -B terminalserver.py
+	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m consoleserver
 
 pybase:
 	PYTHONUSERBASE=$(PWD)/pybase $(pip) install \
@@ -63,7 +63,7 @@ pybase:
 
 .PHONY:	run-using-zip
 run-using-zip: requirements.zip
-	PYTHONPATH=requirements.zip $(python) -B terminalserver.py
+	PYTHONPATH=requirements.zip $(python) -B -m consoleserver
 
 requirements.zip:
 	rm -rf requirements.pkgs
