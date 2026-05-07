@@ -12,11 +12,11 @@ usage:
 	@echo 'make usage'
 	@echo 'make distclean'
 	@echo 'make clean'
-	@echo 'make check'
-	@echo 'make js-check'
-	@echo 'make py-check'
+	@echo 'make check-all'
+	@echo 'make check-js'
+	@echo 'make check-py'
 	@echo 'make run-test'
-	@echo 'make run-using-pyz'
+	@echo 'make run-pyz'
 
 .PHONY:	distclean
 distclean:
@@ -26,19 +26,19 @@ distclean:
 clean:
 	git clean -fdx --exclude=consoleserver.pyz
 
-.PHONY:	check
-check: js-check py-check
+.PHONY:	check-all
+check-all: check-js check-py
 
-.PHONY:	js-check
-js-check: node_modules
+.PHONY:	check-js
+check-js: node_modules
 	npm run lint
 	npm run check
 
 node_modules:
 	npm install --cache npm-cache --quiet --save-dev
 
-.PHONY:	py-check
-py-check: venv/bin/flake8 venv/bin/mypy
+.PHONY:	check-py
+check-py: venv/bin/flake8 venv/bin/mypy
 	venv/bin/flake8 consoleserver/
 	venv/bin/mypy --strict --ignore-missing-imports \
 	    --python-version $(py3ver) consoleserver/
@@ -61,8 +61,8 @@ pybase:
 	    --quiet --no-cache-dir -r requirements.txt \
 	    --user --break-system-packages --no-warn-script-location
 
-.PHONY:	run-using-pyz
-run-using-pyz: consoleserver.pyz
+.PHONY:	run-pyz
+run-pyz: consoleserver.pyz
 	$(python) consoleserver.pyz
 
 consoleserver.pyz:

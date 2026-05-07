@@ -19,7 +19,7 @@ without WebSocket.
 ## Quick Start
 
 ```
-make run
+make run-test
 ```
 
 This downloads the required Python packages and starts the server on
