@@ -367,7 +367,7 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
     if uvicorn_server is None:
         raise SystemExit(
             "Do not run this app directly with the uvicorn command.\n"
-            "Use: python -m consoleserver"
+            "Use: python3 -m consoleserver"
         )
 
     shutdown_event = asyncio.Event()

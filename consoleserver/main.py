@@ -13,7 +13,7 @@ from consoleserver import server
 
 def main() -> None:
     if sys.version_info < (3, 12):
-        raise SystemExit("Python 3.12 or later is required")
+        raise SystemExit("ERROR: Python 3.12 or later is required")
 
     uvicorn_kwargs: dict[str, Any] = {}
     if config.SOCKET:

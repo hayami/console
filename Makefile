@@ -24,7 +24,7 @@ distclean:
 
 .PHONY:	clean
 clean:
-	git clean -fdx --exclude=console.pyz
+	git clean -fdx --exclude=consoleserver.pyz
 
 .PHONY:	check
 check: js-check py-check
@@ -62,14 +62,15 @@ pybase:
 	    --user --break-system-packages --no-warn-script-location
 
 .PHONY:	run-using-pyz
-run-using-pyz: console.pyz
-	$(python) -B console.pyz
+run-using-pyz: consoleserver.pyz
+	$(python) consoleserver.pyz
 
-.PHONY:	console.pyz
-console.pyz:
-	rm -rf console.pkgs console.pyz
+consoleserver.pyz:
+	rm -rf consoleserver.pkgs consoleserver.pyz
 	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
-	    --quiet --no-cache-dir -r requirements.txt --target console.pkgs
-	cp -a consoleserver console.pkgs
-	$(python) -B -m zipapp console.pkgs \
-	    -m consoleserver.main:main -o console.pyz
+	    --quiet --no-cache-dir -r requirements.txt \
+            --target consoleserver.pkgs
+	cp -a consoleserver consoleserver.pkgs
+	rm -rf consoleserver.pkgs/consoleserver/__pycache__
+	$(python) -m zipapp consoleserver.pkgs \
+	    -m consoleserver.main:main -o consoleserver.pyz
