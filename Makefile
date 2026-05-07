@@ -7,12 +7,6 @@ pip	= $(pip3)
 .PHONY:	default
 default: usage
 
-.PHONY:	zip
-zip: requirements.zip
-
-.PHONY:	run
-run: run-using-zip
-
 .PHONY:	usage
 usage:
 	@echo 'make usage'
@@ -21,10 +15,7 @@ usage:
 	@echo 'make check'
 	@echo 'make js-check'
 	@echo 'make py-check'
-	@echo 'make zip'
-	@echo 'make run'
-	@echo 'make run-using-venv'
-	@echo 'make run-using-pybase'
+	@echo 'make run-test'
 	@echo 'make run-using-zip'
 
 .PHONY:	distclean
@@ -61,21 +52,14 @@ venv/bin/mypy: venv/bin/$(pip)
 venv/bin/$(pip):
 	$(python) -m venv venv
 
-.PHONY:	run-using-venv
-run-using-venv: venv/bin/uvicorn
-	venv/bin/$(python) terminalserver.py
-
-venv/bin/uvicorn: venv/bin/$(pip)
-	venv/bin/$(pip) install --quiet -r requirements.txt
-
-.PHONY:	run-using-pybase
-run-using-pybase: pybase
+.PHONY:	run-test
+run-test: pybase
 	PYTHONUSERBASE=$(PWD)/pybase $(python) -B terminalserver.py
 
 pybase:
 	PYTHONUSERBASE=$(PWD)/pybase $(pip) install \
-	    --break-system-packages --no-warn-script-location \
-	    --quiet --user --no-cache-dir -r requirements.txt
+	    --quiet --no-cache-dir -r requirements.txt \
+	    --user --break-system-packages --no-warn-script-location
 
 .PHONY:	run-using-zip
 run-using-zip: requirements.zip
@@ -83,6 +67,6 @@ run-using-zip: requirements.zip
 
 requirements.zip:
 	rm -rf requirements.pkgs
-	$(pip) install --quiet --no-cache-dir \
-	    -r requirements.txt --target requirements.pkgs
+	$(pip) install --quiet --no-cache-dir -r requirements.txt
+	    --target requirements.pkgs
 	cd requirements.pkgs && zip --quiet -r ../requirements.zip .
