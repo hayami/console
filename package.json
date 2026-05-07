@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "lint": "eslint --no-eslintrc --env browser --env es2021 consoleserver/static/terminal.js",
-    "check": "prettier --check consoleserver/static/terminal.js",
-    "format": "prettier --write consoleserver/static/terminal.js"
+    "lint": "eslint --no-eslintrc --env browser --env es2021 consoleserver/static/console.js",
+    "check": "prettier --check consoleserver/static/console.js",
+    "format": "prettier --write consoleserver/static/console.js"
   },
   "devDependencies": {
     "eslint": "^8",

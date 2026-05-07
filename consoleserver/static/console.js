@@ -32,7 +32,7 @@ window.onload = function () {
   const webLinksAddon = new WebLinksAddon.WebLinksAddon(webLinkHandler);
   term.loadAddon(webLinksAddon);
 
-  const container = document.getElementById("terminal-container");
+  const container = document.getElementById("console-container");
   term.open(container);
   term.focus();
   fitAddon.fit();

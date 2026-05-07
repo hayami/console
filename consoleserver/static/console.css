@@ -5,7 +5,7 @@ html, body {
   overflow: hidden;
 }
 
-#terminal-container {
+#console-container {
   width: auto;
   height: 100%;
   margin: 0 auto;
