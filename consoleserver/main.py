@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import sys
 from typing import Any
 
 import uvicorn
@@ -11,6 +12,9 @@ from consoleserver import server
 
 
 def main() -> None:
+    if sys.version_info < (3, 12):
+        raise SystemExit("Python 3.12 or later is required")
+
     uvicorn_kwargs: dict[str, Any] = {}
     if config.SOCKET:
         uvicorn_kwargs["uds"] = config.SOCKET

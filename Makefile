@@ -16,7 +16,7 @@ usage:
 	@echo 'make js-check'
 	@echo 'make py-check'
 	@echo 'make run-test'
-	@echo 'make run-using-zip'
+	@echo 'make run-using-pyz'
 
 .PHONY:	distclean
 distclean:
@@ -24,7 +24,7 @@ distclean:
 
 .PHONY:	clean
 clean:
-	git clean -fdx --exclude=requirements.zip
+	git clean -fdx --exclude=console.pyz
 
 .PHONY:	check
 check: js-check py-check
@@ -61,12 +61,15 @@ pybase:
 	    --quiet --no-cache-dir -r requirements.txt \
 	    --user --break-system-packages --no-warn-script-location
 
-.PHONY:	run-using-zip
-run-using-zip: requirements.zip
-	PYTHONPATH=requirements.zip $(python) -B -m consoleserver
+.PHONY:	run-using-pyz
+run-using-pyz: console.pyz
+	$(python) -B console.pyz
 
-requirements.zip:
-	rm -rf requirements.pkgs
-	$(pip) install --quiet --no-cache-dir -r requirements.txt
-	    --target requirements.pkgs
-	cd requirements.pkgs && zip --quiet -r ../requirements.zip .
+.PHONY:	console.pyz
+console.pyz:
+	rm -rf console.pkgs console.pyz
+	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
+	    --quiet --no-cache-dir -r requirements.txt --target console.pkgs
+	cp -a consoleserver console.pkgs
+	$(python) -B -m zipapp console.pkgs \
+	    -m consoleserver.main:main -o console.pyz
