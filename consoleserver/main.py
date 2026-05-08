@@ -9,6 +9,7 @@ import uvicorn
 
 from consoleserver import config
 from consoleserver import server
+from consoleserver import globalvars as g
 
 
 def main() -> None:
@@ -32,6 +33,6 @@ def main() -> None:
     uvicorn_kwargs["log_config"] = log_config
 
     uvicorn_config = uvicorn.Config(server.app, **uvicorn_kwargs)
-    server.uvicorn_server = uvicorn.Server(uvicorn_config)
+    g.uvicorn_server = uvicorn.Server(uvicorn_config)
     with contextlib.suppress(KeyboardInterrupt):
-        server.uvicorn_server.run()
+        g.uvicorn_server.run()

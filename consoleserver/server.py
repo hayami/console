@@ -8,9 +8,7 @@ import os
 import signal
 import struct
 import termios
-import warnings
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import socketio
@@ -18,31 +16,13 @@ import starlette.applications
 import starlette.responses
 import starlette.routing
 import starlette.staticfiles
-import uvicorn
 
 from consoleserver import config
-from consoleserver.execshell import execshell
+from consoleserver import session as sm
+from consoleserver import globalvars as g
 
 
 _logger = logging.getLogger("uvicorn")
-uvicorn_server: uvicorn.Server | None = None
-
-
-# ---------------------------------------------------------------------------
-# PTY session management
-# ---------------------------------------------------------------------------
-@dataclass
-class PtySession:
-    pid: int
-    master_fd: int
-    tty_name: str
-    reaped: bool = False
-    keyin_event: asyncio.Event | None = None
-    keyin_task: asyncio.Task[None] | None = None
-
-
-_sessions: dict[str, PtySession] = {}
-_timeout_task: asyncio.Task[None] | None = None
 
 
 def _parse_size(data: dict[str, Any]) -> tuple[int, int]:
@@ -55,93 +35,6 @@ def _parse_size(data: dict[str, Any]) -> tuple[int, int]:
     return cols, rows
 
 
-def _open_pty_session(cols: int, rows: int) -> tuple[int, int, str]:
-    """Open a PTY, fork, exec the shell, and return
-    *(pid, master_fd, tty_name)*.
-
-    The master fd is set to non-blocking before returning.
-    Uses a pipe with O_CLOEXEC to detect exec failure: if execve
-    succeeds the pipe is closed automatically; if it fails the child
-    writes a byte before exiting.
-    Raises :class:`RuntimeError` or :class:`OSError` on failure.
-    """
-    master_fd, slave_fd = os.openpty()
-    try:
-        flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
-        fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-        fcntl.ioctl(
-            master_fd,
-            termios.TIOCSWINSZ,
-            struct.pack("HHHH", rows, cols, 0, 0),
-        )
-        execfail_r, execfail_w = os.pipe2(os.O_CLOEXEC)
-    except OSError:
-        os.close(master_fd)
-        os.close(slave_fd)
-        raise
-    try:
-        # Suppress Python 3.12's DeprecationWarning about fork() in
-        # multi-threaded processes; the immediate execve() is safe.
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message=".*fork.*",
-                category=DeprecationWarning,
-            )
-            pid = os.fork()
-    except OSError:
-        os.close(execfail_r)
-        os.close(execfail_w)
-        os.close(master_fd)
-        os.close(slave_fd)
-        raise RuntimeError("fork failed")
-
-    if pid == 0:
-        os.close(execfail_r)
-        os.close(master_fd)
-        execshell(slave_fd, execfail_w)  # never returns
-
-    tty_name = os.ttyname(slave_fd)
-    os.close(slave_fd)
-    os.close(execfail_w)
-    exec_failed = os.read(execfail_r, 1) != b""
-    os.close(execfail_r)
-
-    if exec_failed:
-        os.close(master_fd)
-        with contextlib.suppress(OSError, ChildProcessError):
-            os.waitpid(pid, 0)
-        raise RuntimeError("failed to exec shell")
-
-    return pid, master_fd, tty_name
-
-
-async def _handle_shell_exit(sid: str) -> None:
-    """Notify client and clean up session."""
-    session = _sessions.get(sid)
-    if session is None:
-        return
-    reason = "shell exited (status unavailable)"
-    loop = asyncio.get_running_loop()
-    try:
-        _, status = await asyncio.wait_for(
-            loop.run_in_executor(None, os.waitpid, session.pid, 0),
-            timeout=1.0,
-        )
-        session.reaped = True
-        if os.WIFEXITED(status):
-            reason = f"shell exited ({os.WEXITSTATUS(status)})"
-        elif os.WIFSIGNALED(status):
-            reason = f"shell killed by signal {os.WTERMSIG(status)}"
-    except (ChildProcessError, OSError):
-        session.reaped = True
-    except TimeoutError:
-        pass
-    with contextlib.suppress(Exception):
-        await sio.emit("close-connection", reason, to=sid)
-    await _cleanup_session(sid)
-
-
 def _on_pty_readable(
     sid: str, master_fd: int, loop: asyncio.AbstractEventLoop
 ) -> None:
@@ -151,150 +44,63 @@ def _on_pty_readable(
             # EOF: FreeBSD returns b"", Linux usually raises EIO.
             raise OSError("EOF on PTY master")
         loop.create_task(
-            sio.emit("output", data.decode("utf-8", errors="replace"), to=sid)
+            g.sio.emit(
+                "output", data.decode("utf-8", errors="replace"), to=sid
+            )
         )
     except OSError:
         loop.remove_reader(master_fd)
-        loop.create_task(_handle_shell_exit(sid))
-
-
-async def _cleanup_session(sid: str) -> None:
-    """Remove *sid* and kill its child process.  Idempotent."""
-    global _timeout_task
-    session = _sessions.pop(sid, None)
-    if session is None:
-        return
-    if session.keyin_event is not None:
-        session.keyin_event = None
-    if session.keyin_task is not None:
-        session.keyin_task.cancel()
-    loop = asyncio.get_running_loop()
-    loop.remove_reader(session.master_fd)
-    with contextlib.suppress(OSError):
-        os.close(session.master_fd)
-    if not session.reaped:
-        try:
-            os.kill(session.pid, signal.SIGTERM)
-            await asyncio.wait_for(
-                loop.run_in_executor(None, os.waitpid, session.pid, 0),
-                timeout=1.0,
-            )
-        except (ProcessLookupError, ChildProcessError, OSError):
-            pass
-        except TimeoutError:
-            with contextlib.suppress(OSError):
-                os.kill(session.pid, signal.SIGKILL)
-            with contextlib.suppress(OSError, ChildProcessError, TimeoutError):
-                await asyncio.wait_for(
-                    loop.run_in_executor(None, os.waitpid, session.pid, 0),
-                    timeout=1.0,
-                )
-
-    if config.NO_SESSION_TIMEOUT > 0 and not _sessions:
-        if _timeout_task is None or _timeout_task.done():
-            _timeout_task = loop.create_task(_no_session_timeout_handler())
-
-    _logger.info(f"Session closed on {session.tty_name}")
-
-
-async def _keyin_timeout_handler(sid: str) -> None:
-    """Disconnect the session after keyin_timeout seconds without key input."""
-    session = _sessions.get(sid)
-    if session is None:
-        return
-    assert session.keyin_event is not None
-    while True:
-        session.keyin_event.clear()
-        try:
-            await asyncio.wait_for(
-                session.keyin_event.wait(), timeout=config.KEYIN_TIMEOUT,
-            )
-        except TimeoutError:
-            with contextlib.suppress(Exception):
-                await sio.emit(
-                    "close-connection",
-                    f"key input timeout ({config.KEYIN_TIMEOUT}s)",
-                    to=sid,
-                )
-            _logger.info(
-                f"Key input timeout ({config.KEYIN_TIMEOUT}s)"
-                f" on {session.tty_name}"
-            )
-            # Prevent _cleanup_session from cancelling this task.
-            session.keyin_task = None
-            await _cleanup_session(sid)
-            return
-
-
-async def _no_session_timeout_handler() -> None:
-    """Shut down the server on no-session timeout."""
-    try:
-        await asyncio.sleep(config.NO_SESSION_TIMEOUT)
-    except asyncio.CancelledError:
-        return
-    if _sessions:
-        return
-    msg = f"No sessions for {config.NO_SESSION_TIMEOUT}s, shutting down"
-    _logger.info(msg)
-    assert uvicorn_server is not None
-    uvicorn_server.should_exit = True
+        loop.create_task(sm.handle_shell_exit(sid))
 
 
 # ---------------------------------------------------------------------------
-# Socket.IO server
-# ---------------------------------------------------------------------------
-sio: socketio.AsyncServer = socketio.AsyncServer(
-    async_mode="asgi", cors_allowed_origins=config.CORS_ALLOWED_ORIGINS,
-    ping_timeout=3.0, ping_interval=5.0,
-)
 
-
-@sio.event  # type: ignore[untyped-decorator]
+@g.sio.event  # type: ignore[untyped-decorator]
 async def connect(
     sid: str, environ: dict[str, Any], auth: dict[str, Any] | None = None
 ) -> bool:
-    global _timeout_task
     cols, rows = _parse_size(auth or {})
 
     try:
-        pid, master_fd, tty_name = _open_pty_session(cols, rows)
+        pid, master_fd, tty_name = sm.open_pty_session(cols, rows)
     except (RuntimeError, OSError) as e:
         with contextlib.suppress(Exception):
-            await sio.emit("close-connection", str(e), to=sid)
+            await g.sio.emit("close-connection", str(e), to=sid)
         # Accept the connection so the client can receive
         # the close-connection event with the error reason.
         return True
 
     loop = asyncio.get_running_loop()
-    _sessions[sid] = PtySession(
+    sm.sessions[sid] = sm.PtySession(
         pid=pid,
         master_fd=master_fd,
         tty_name=tty_name,
     )
     if config.NO_SESSION_TIMEOUT > 0:
-        if not (_timeout_task is None or _timeout_task.done()):
-            _timeout_task.cancel()
-        _timeout_task = None
+        if not (sm.timeout_task is None
+                or sm.timeout_task.done()):
+            sm.timeout_task.cancel()
+        sm.timeout_task = None
     loop.add_reader(master_fd, _on_pty_readable, sid, master_fd, loop)
     if config.KEYIN_TIMEOUT > 0:
-        _sessions[sid].keyin_event = asyncio.Event()
-        _sessions[sid].keyin_task = loop.create_task(
-            _keyin_timeout_handler(sid),
+        sm.sessions[sid].keyin_event = asyncio.Event()
+        sm.sessions[sid].keyin_task = loop.create_task(
+            sm.keyin_timeout_handler(sid),
         )
 
     _logger.info(f"New session on {tty_name}")
     return True
 
 
-@sio.event  # type: ignore[untyped-decorator]
+@g.sio.event  # type: ignore[untyped-decorator]
 async def disconnect(sid: str) -> bool:
-    await _cleanup_session(sid)
+    await sm.cleanup_session(sid)
     return True
 
 
-@sio.event  # type: ignore[untyped-decorator]
+@g.sio.event  # type: ignore[untyped-decorator]
 async def input(sid: str, data: str) -> bool:
-    session = _sessions.get(sid)
+    session = sm.sessions.get(sid)
     if session is None:
         return False
     if session.keyin_event is not None:
@@ -313,16 +119,16 @@ async def input(sid: str, data: str) -> bool:
             finally:
                 loop.remove_writer(session.master_fd)
             # Session may have been cleaned up while awaiting.
-            if _sessions.get(sid) is not session:
+            if sm.sessions.get(sid) is not session:
                 break
         except OSError:
             break
     return True
 
 
-@sio.event  # type: ignore[untyped-decorator]
+@g.sio.event  # type: ignore[untyped-decorator]
 async def resize(sid: str, data: dict[str, int]) -> bool:
-    session = _sessions.get(sid)
+    session = sm.sessions.get(sid)
     if session is None:
         return False
     cols, rows = _parse_size(data)
@@ -337,9 +143,7 @@ async def resize(sid: str, data: dict[str, int]) -> bool:
 # ASGI app
 # ---------------------------------------------------------------------------
 async def _lifespan(_: Any) -> AsyncIterator[None]:
-    global _timeout_task
-
-    if uvicorn_server is None:
+    if g.uvicorn_server is None:
         raise SystemExit(
             "Do not run this app directly with the uvicorn command.\n"
             "Use: python3 -m consoleserver"
@@ -350,12 +154,14 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
     async def _shutdown_notifier() -> None:
         """Wait for the shutdown event, notify clients, then stop uvicorn."""
         await shutdown_event.wait()
-        for sid in list(_sessions):
+        for sid in list(sm.sessions):
             with contextlib.suppress(Exception):
-                await sio.emit("close-connection", "server shutdown", to=sid)
+                await g.sio.emit(
+                    "close-connection", "server shutdown", to=sid
+                )
         await asyncio.sleep(1.0)
-        assert uvicorn_server is not None
-        uvicorn_server.should_exit = True
+        assert g.uvicorn_server is not None
+        g.uvicorn_server.should_exit = True
 
     def _on_signal() -> None:
         # Restore default handlers so a second signal force-kills.
@@ -370,14 +176,16 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
         loop.add_signal_handler(sig, _on_signal)
 
     if config.NO_SESSION_TIMEOUT > 0:
-        _timeout_task = loop.create_task(_no_session_timeout_handler())
+        sm.timeout_task = loop.create_task(
+            sm.no_session_timeout_handler()
+        )
 
     yield
 
-    for sid in list(_sessions):
-        await _cleanup_session(sid)
+    for sid in list(sm.sessions):
+        await sm.cleanup_session(sid)
     with contextlib.suppress(Exception):
-        await sio.shutdown()
+        await g.sio.shutdown()
 
 
 _starlette = starlette.applications.Starlette(
@@ -396,4 +204,6 @@ _starlette = starlette.applications.Starlette(
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),
 )
-app: socketio.ASGIApp = socketio.ASGIApp(sio, _starlette, socketio_path="sio")
+app: socketio.ASGIApp = socketio.ASGIApp(
+    g.sio, _starlette, socketio_path="sio"
+)
