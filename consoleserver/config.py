@@ -75,7 +75,8 @@ if not isinstance(SOCKET, str):
 _cors_raw = _server_config.get("cors_allowed_origins", "*")
 if isinstance(_cors_raw, str):
     CORS_ALLOWED_ORIGINS: str | list[str] = _cors_raw
-elif isinstance(_cors_raw, list) and all(isinstance(o, str) for o in _cors_raw):
+elif (isinstance(_cors_raw, list)
+      and all(isinstance(o, str) for o in _cors_raw)):
     CORS_ALLOWED_ORIGINS = _cors_raw
 else:
     raise SystemExit(
@@ -146,7 +147,9 @@ ARGS: list[str] = _shell_config.get("args", [])
 if not isinstance(ARGS, list) or not all(isinstance(a, str) for a in ARGS):
     raise SystemExit(f"{CONFIG_FILE}: shell.args must be a list of strings")
 if not ARGS:
-    raise SystemExit(f"{CONFIG_FILE}: shell.args requires at least one element")
+    raise SystemExit(
+        f"{CONFIG_FILE}: shell.args requires at least one element"
+    )
 
 ENV: dict[str, str] = _shell_config.get("env", {})
 if not isinstance(ENV, dict) or not all(
