@@ -16,9 +16,11 @@ CONFIG_FILE = "config.json5"
 # TODO: FIXME
 if sys.argv[0].endswith(".pyz"):
     BASE_DIR = Path(sys.argv[0]).parent
+    CONFIG_DIR = BASE_DIR
     STATIC_DIR = BASE_DIR / "consoleserver" / "static"
 else:
     BASE_DIR = Path(__file__).parent.parent
+    CONFIG_DIR = BASE_DIR
     STATIC_DIR = Path(__file__).parent / "static"
 
 
@@ -35,7 +37,7 @@ def _expand_env(obj: Any) -> Any:
 
 _config: dict[str, Any] = {}
 with contextlib.suppress(FileNotFoundError):
-    with open(BASE_DIR / CONFIG_FILE) as _f:
+    with open(CONFIG_DIR / CONFIG_FILE) as _f:
         try:
             _config = json5.load(_f)
         except ValueError as e:
