@@ -18,8 +18,9 @@ import starlette.routing
 import starlette.staticfiles
 
 from . import config
-from . import session as sm
 from . import globalvars as g
+from . import session as sm
+from . import static
 
 
 _logger = logging.getLogger("uvicorn")
@@ -190,17 +191,8 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
 
 _starlette = starlette.applications.Starlette(
     routes=[
-        starlette.routing.Route(
-            "/",
-            lambda _: starlette.responses.FileResponse(
-                f"{config.STATIC_DIR}/_index.html"
-            ),
-        ),
-        starlette.routing.Mount(
-            "/static", starlette.staticfiles.StaticFiles(
-                directory=f"{config.STATIC_DIR}"
-            ),
-        ),
+        starlette.routing.Route("/", static.endpoint),
+        starlette.routing.Route("/static/{path:path}", static.endpoint),
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),
 )
