@@ -17,9 +17,9 @@ import starlette.responses
 import starlette.routing
 import starlette.staticfiles
 
-from consoleserver import config
-from consoleserver import session as sm
-from consoleserver import globalvars as g
+from . import config
+from . import session as sm
+from . import globalvars as g
 
 
 _logger = logging.getLogger("uvicorn")

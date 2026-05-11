@@ -3,7 +3,7 @@ from __future__ import annotations
 import socketio
 import uvicorn
 
-from consoleserver import config
+from . import config
 
 
 sio: socketio.AsyncServer = socketio.AsyncServer(

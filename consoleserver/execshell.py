@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 
-from consoleserver import config
+from . import config
 
 
 def execshell(slave_fd: int, execfail_w: int) -> None:

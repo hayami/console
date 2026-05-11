@@ -7,9 +7,9 @@ from typing import Any
 
 import uvicorn
 
-from consoleserver import config
-from consoleserver import server
-from consoleserver import globalvars as g
+from . import config
+from . import server
+from . import globalvars as g
 
 
 def main() -> None:

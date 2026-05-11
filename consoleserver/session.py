@@ -11,9 +11,9 @@ import termios
 import warnings
 from dataclasses import dataclass
 
-from consoleserver import config
-from consoleserver import execshell
-from consoleserver import globalvars as g
+from . import config
+from . import execshell
+from . import globalvars as g
 
 
 _logger = logging.getLogger("uvicorn")
