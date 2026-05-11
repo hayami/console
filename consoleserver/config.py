@@ -5,23 +5,20 @@ import contextlib
 import json5
 import os
 import socket
-import sys
 from pathlib import Path
 from typing import Any
 
 
-CONFIG_FILE = "config.json5"
-
-
-# TODO: FIXME
-if sys.argv[0].endswith(".pyz"):
-    BASE_DIR = Path(sys.argv[0]).parent
-    CONFIG_DIR = BASE_DIR
-    STATIC_DIR = BASE_DIR / "consoleserver" / "static"
+_loader = globals().get("__loader__")
+_archive = getattr(_loader, "archive", None)
+if _archive is not None:
+    BASE_DIR = Path(_archive).resolve().parent
+    STATIC_DIR = BASE_DIR / "consoleserver" / "static"  # TODO: FIXME
 else:
-    BASE_DIR = Path(__file__).parent.parent
-    CONFIG_DIR = BASE_DIR
-    STATIC_DIR = Path(__file__).parent / "static"
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    STATIC_DIR = Path(__file__).resolve().parent / "static"
+CONFIG_DIR = BASE_DIR
+CONFIG_FILE = "config.json5"
 
 
 def _expand_env(obj: Any) -> Any:
