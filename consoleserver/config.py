@@ -13,7 +13,7 @@ _loader = globals().get("__loader__")
 _archive = getattr(_loader, "archive", None)
 if _archive is not None:
     BASE_DIR = Path(_archive).resolve().parent
-    STATIC_DIR = BASE_DIR / "consoleserver" / "static"  # TODO: FIXME
+    STATIC_DIR = BASE_DIR / __package__ / "static"  # TODO: FIXME
 else:
     BASE_DIR = Path(__file__).resolve().parent.parent
     STATIC_DIR = Path(__file__).resolve().parent / "static"
