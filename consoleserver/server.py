@@ -13,14 +13,11 @@ from typing import Any
 
 import socketio
 import starlette.applications
-import starlette.responses
-import starlette.routing
-import starlette.staticfiles
 
 from . import config
 from . import globalvars as g
 from . import session as sm
-from . import static
+from . import staticfiles
 
 
 _logger = logging.getLogger("uvicorn")
@@ -191,8 +188,8 @@ async def _lifespan(_: Any) -> AsyncIterator[None]:
 
 _starlette = starlette.applications.Starlette(
     routes=[
-        starlette.routing.Route("/", static.endpoint),
-        starlette.routing.Route("/static/{path:path}", static.endpoint),
+        starlette.routing.Route("/", staticfiles.endpoint),
+        starlette.routing.Route("/static/{path:path}", staticfiles.endpoint),
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),
 )

@@ -14,4 +14,4 @@ def endpoint(request: Request) -> Response:
     else:
         reqpath = f"static/{reqpath}"
 
-    return FileResponse(f"{config.STATIC_DIR}/{reqpath}")
+    return FileResponse(f"{config.STATICFILES_DIR}/{reqpath}")
