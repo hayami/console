@@ -2,6 +2,7 @@
 __pycache__/
 consoleserver.pkgs/
 consoleserver.pyz
+consoleserver/staticfiles-manifest.json
 node_modules/
 npm-cache/
 pybase/
