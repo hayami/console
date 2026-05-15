@@ -12,9 +12,11 @@ from typing import Any
 _loader = globals().get("__loader__")
 _archive = getattr(_loader, "archive", None)
 if _archive is not None:
+    IS_ARCHIVE = True
     BASE_DIR = Path(_archive).resolve().parent
     STATICFILES_DIR = BASE_DIR / __package__ / "staticfiles"  # TODO: FIXME
 else:
+    IS_ARCHIVE = False
     BASE_DIR = Path(__file__).resolve().parent.parent
     STATICFILES_DIR = Path(__file__).resolve().parent / "staticfiles"
 CONFIG_DIR = BASE_DIR
