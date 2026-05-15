@@ -77,26 +77,29 @@ consoleserver.pyz:
 
 .PHONY:	consoleserver/staticfiles-manifest.json
 consoleserver/staticfiles-manifest.json:
-	@(printf '{'						&& \
-	    dir='consoleserver/staticfiles'			&& \
-	    comma=''						&& \
-	    (cd $$dir && find $$(ls -A)  -type f -print) | sort -u \
-	    | while read file; do				   \
-	        et=$$(openssl dgst -sha256 < $$dir/$$file	   \
-	              | sed 's/^.*[^0-9A-Fa-f]//')		&& \
-	        cl=$$(wc -c  < $$dir/$$file)			&& \
-	        case "$$file" in				   \
-	        *.css)  t='css'					;; \
-	        *.html) t='html'				;; \
-	        *.js)   t='javascript'				;; \
-	        esac						&& \
-	        ct="text/$$t; charset=utf-8"			&& \
-	        printf '%s\n' "$$comma"				&& \
-	        printf '    "%s": {\n' "$$file"			&& \
-	        printf '        "etag": "\\"%s\\"",\n' "$$et"	&& \
-	        printf '        "content-length": %d,\n' "$$cl"	&& \
-	        printf '        "content-type": "%s"\n' "$$ct"	&& \
-	        printf '    }'					&& \
-	        comma=','					;  \
-	    done						&& \
-	printf '\n}\n') > $@
+	@printf '{' > $@
+	@dir='consoleserver/staticfiles' && comma=''			&& \
+	(cd $$dir && find $$(ls -A)  -type f -print) | sort -u		   \
+	| while read file; do						   \
+	    echo "Generating ETag for $$file"				&& \
+	    etag=$$(openssl dgst -sha256 < $$dir/$$file			   \
+	            | sed 's/^.*[^0-9A-Fa-f]//')			&& \
+	    len=$$(wc -c  < $$dir/$$file)				&& \
+	    case "$$file" in						   \
+	    *.css)  t='css'						;; \
+	    *.html) t='html'						;; \
+	    *.js)   t='javascript'					;; \
+            *) echo "ERROR: unknown suffix for $$file" 1>&2; exit 1	;; \
+	    esac							&& \
+	    type="text/$$t; charset=utf-8"				&& \
+            (								   \
+	        printf '%s\n' "$$comma"					&& \
+	        printf '    "%s": {\n' "$$file"				&& \
+	        printf '        "etag": "\\"%s\\"",\n' "$$etag"		&& \
+	        printf '        "content-length": %d,\n' "$$len"	&& \
+	        printf '        "content-type": "%s"\n' "$$type"	&& \
+	        printf '    }'						   \
+	    ) >> $@							&& \
+	    comma=','							;  \
+	done
+	@printf '\n}\n' >> $@
