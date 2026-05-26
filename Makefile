@@ -41,7 +41,7 @@ node_modules:
 check-py: venv/bin/flake8 venv/bin/mypy
 	venv/bin/flake8 consoleserver/
 	venv/bin/mypy --strict --ignore-missing-imports \
-	    --python-version $(py3ver) consoleserver/
+	    --python-version $(py3ver) --no-sqlite-cache consoleserver/
 
 venv/bin/flake8: venv/bin/$(pip)
 	venv/bin/$(pip) install --quiet flake8
