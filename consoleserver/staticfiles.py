@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from importlib import resources
 import mimetypes
 import pathlib
 
@@ -27,7 +26,7 @@ def _getres(path: str) -> Response | None:
 
         return FileResponse(fpath)
     else:
-        fres = resources.files(__package__).joinpath("staticfiles", *parts)
+        fres = config.STATICFILES_DIR.joinpath(*parts)
         if not fres.is_file():
             return None
 
