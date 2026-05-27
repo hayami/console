@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
-import pathlib
+from pathlib import PurePosixPath
 
 from starlette.requests import Request
 from starlette.responses import FileResponse
@@ -14,7 +14,7 @@ def _getres(path: str) -> Response | None:
     if "\\" in path:
         return None
 
-    p = pathlib.PurePosixPath(path)
+    p = PurePosixPath(path)
     parts = p.parts
     if p.is_absolute() or ".." in parts:
         return None
