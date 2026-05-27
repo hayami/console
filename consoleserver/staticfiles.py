@@ -20,13 +20,13 @@ def _getres(path: str) -> Response | None:
         return None
 
     if not config.IS_ARCHIVE:
-        fpath = config.STATICFILES_DIR.joinpath(*parts)
+        fpath = config.STATICFILES_PATH.joinpath(*parts)
         if not fpath.is_file():
             return None
 
         return FileResponse(fpath)
     else:
-        fres = config.STATICFILES_DIR.joinpath(*parts)
+        fres = config.STATICFILES_RES.joinpath(*parts)
         if not fres.is_file():
             return None
 

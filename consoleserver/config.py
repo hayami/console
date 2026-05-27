@@ -15,11 +15,11 @@ _archive = getattr(_loader, "archive", None)
 if _archive is not None:
     IS_ARCHIVE = True
     BASE_DIR = Path(_archive).resolve().parent
-    STATICFILES_DIR = resources.files(__package__) / "staticfiles"
+    STATICFILES_RES = resources.files(__package__) / "staticfiles"
 else:
     IS_ARCHIVE = False
     BASE_DIR = Path(__file__).resolve().parent.parent
-    STATICFILES_DIR = Path(__file__).resolve().parent / "staticfiles"
+    STATICFILES_PATH = Path(__file__).resolve().parent / "staticfiles"
 CONFIG_DIR = BASE_DIR
 CONFIG_FILE = "config.json5"
 
