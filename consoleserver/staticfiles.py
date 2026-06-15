@@ -25,9 +25,10 @@ def _load_manifest() -> _Manifest:
         return cast(_Manifest, json.load(fp))
 
 
-def _manifest_headers(path: str) -> dict[str, str]:
+def _get_manifest_headers(path: str) -> dict[str, str] | None:
     entry = _load_manifest().get(path)
-    assert entry is not None
+    if entry is None:
+        return None
 
     etag = entry.get("etag")
     assert isinstance(etag, str)
@@ -95,7 +96,9 @@ def _get_response(request: Request, path: str) -> Response | None:
     if not target.is_file():
         return None
 
-    headers = _manifest_headers(path)
+    headers = _get_manifest_headers(path)
+    if headers is None:
+        return None
 
     not_modified_response = _check_not_modified(request, headers)
     if not_modified_response is not None:
