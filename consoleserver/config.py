@@ -6,20 +6,27 @@ import json5
 import os
 import socket
 from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any
+
+
+STATICFILES: Traversable
+MANIFEST: Traversable
 
 
 _loader = globals().get("__loader__")
 _archive = getattr(_loader, "archive", None)
 if _archive is None:
     IS_ARCHIVE = False
-    STATICFILES_PATH = Path(__file__).resolve().parent / "staticfiles"
     _BASE_DIR = Path(__file__).resolve().parent.parent
+    STATICFILES = Path(__file__).resolve().parent / "staticfiles"
+    MANIFEST = Path(__file__).resolve().parent / "staticfiles-manifest.json"
 else:
     IS_ARCHIVE = True
-    STATICFILES_RES = resources.files(__package__) / "staticfiles"
     _BASE_DIR = Path(_archive).resolve().parent
+    STATICFILES = resources.files(__package__) / "staticfiles"
+    MANIFEST = resources.files(__package__) / "staticfiles-manifest.json"
 
 _CONFIG_DIR = _BASE_DIR
 _CONFIG_FILE = "config.json5"

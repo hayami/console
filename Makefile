@@ -53,7 +53,7 @@ venv/bin/$(pip):
 	$(python) -m venv venv
 
 .PHONY:	run-test
-run-test: pybase
+run-test: pybase consoleserver/staticfiles-manifest.json
 	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m consoleserver
 
 pybase:
@@ -65,7 +65,7 @@ pybase:
 run-pyz: consoleserver.pyz
 	$(python) consoleserver.pyz
 
-consoleserver.pyz:
+consoleserver.pyz: consoleserver/staticfiles-manifest.json
 	rm -rf consoleserver.pkgs consoleserver.pyz
 	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
 	    --quiet --no-cache-dir -r requirements.txt \
