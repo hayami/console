@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 import mimetypes
+from collections.abc import Iterator
 from pathlib import PurePosixPath
 
 from starlette.requests import Request
 from starlette.responses import FileResponse
 from starlette.responses import Response
+from starlette.responses import StreamingResponse
 
 from . import config
+
+
+_CHUNK_SIZE = 4096
+
+
+def _read_chunks(fres) -> Iterator[bytes]:
+    with fres.open("rb") as fp:
+        while True:
+            chunk = fp.read(_CHUNK_SIZE)
+            if not chunk:
+                break
+            yield chunk
 
 
 def _getres(path: str) -> Response | None:
@@ -31,8 +45,8 @@ def _getres(path: str) -> Response | None:
             return None
 
         media_type, _ = mimetypes.guess_type(parts[-1])
-        return Response(
-            fres.read_bytes(),
+        return StreamingResponse(
+            _read_chunks(fres),
             media_type=media_type or "application/octet-stream",
         )
 
