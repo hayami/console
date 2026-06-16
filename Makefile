@@ -4,6 +4,10 @@ python	= $(python3)
 pip3	= pip$(py3ver)
 pip	= $(pip3)
 
+pkgname	= consoleserver
+
+MAKEFLAGS += --no-print-directory
+
 .PHONY:	default
 default: usage
 
@@ -24,7 +28,7 @@ distclean:
 
 .PHONY:	clean
 clean:
-	git clean -fdx --exclude=consoleserver.pyz
+	git clean -fdx --exclude=$(pkgname).pyz
 
 .PHONY:	check-all
 check-all: check-js check-py
@@ -39,9 +43,9 @@ node_modules:
 
 .PHONY:	check-py
 check-py: venv/bin/flake8 venv/bin/mypy
-	venv/bin/flake8 consoleserver/
+	venv/bin/flake8 src/
 	venv/bin/mypy --strict --ignore-missing-imports \
-	    --python-version $(py3ver) --no-sqlite-cache consoleserver/
+	    --python-version $(py3ver) --no-sqlite-cache src/
 
 venv/bin/flake8: venv/bin/$(pip)
 	venv/bin/$(pip) install --quiet flake8
@@ -53,8 +57,10 @@ venv/bin/$(pip):
 	$(python) -m venv venv
 
 .PHONY:	run-test
-run-test: pybase consoleserver/staticfiles-manifest.json
-	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m consoleserver
+run-test:
+	$(MAKE) pybase
+	$(MAKE) src/staticfiles-manifest.json
+	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m src
 
 pybase:
 	PYTHONUSERBASE=$(PWD)/pybase $(pip) install \
@@ -62,23 +68,24 @@ pybase:
 	    --user --break-system-packages --no-warn-script-location
 
 .PHONY:	run-pyz
-run-pyz: consoleserver.pyz
-	$(python) consoleserver.pyz
+run-pyz: $(pkgname).pyz
+	$(python) $(pkgname).pyz
 
-consoleserver.pyz: consoleserver/staticfiles-manifest.json
-	rm -rf consoleserver.pkgs consoleserver.pyz
+$(pkgname).pyz:
+	$(MAKE) src/staticfiles-manifest.json
+	rm -rf $(pkgname).pkgs $(pkgname).pyz
 	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
 	    --quiet --no-cache-dir -r requirements.txt \
-            --target consoleserver.pkgs
-	cp -a consoleserver consoleserver.pkgs
-	rm -rf consoleserver.pkgs/consoleserver/__pycache__
-	$(python) -m zipapp consoleserver.pkgs \
-	    -m consoleserver.main:main -o consoleserver.pyz
+            --target $(pkgname).pkgs
+	cp -a src $(pkgname).pkgs/$(pkgname)
+	rm -rf $(pkgname).pkgs/$(pkgname)/__pycache__
+	$(python) -m zipapp $(pkgname).pkgs \
+	    -m $(pkgname).main:main -o $(pkgname).pyz
 
-.PHONY:	consoleserver/staticfiles-manifest.json
-consoleserver/staticfiles-manifest.json:
+.PHONY:	src/staticfiles-manifest.json
+src/staticfiles-manifest.json:
 	@printf '{' > $@
-	@dir='consoleserver/staticfiles' && comma=''			&& \
+	@dir='src/staticfiles' && comma=''				&& \
 	(cd $$dir && find $$(ls -A)  -type f -print) | sort -u		   \
 	| while read file; do						   \
 	    echo "Generating ETag for $$file"				&& \
