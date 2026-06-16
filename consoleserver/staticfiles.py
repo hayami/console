@@ -8,7 +8,6 @@ from pathlib import PurePosixPath
 from typing import Any, cast
 
 from starlette.requests import Request
-from starlette.responses import FileResponse
 from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
@@ -46,36 +45,27 @@ def _get_manifest_headers(path: str) -> dict[str, str] | None:
     }
 
 
-def _check_not_modified(
-    request: Request,
-    headers: dict[str, str]
-) -> Response | None:
-
+def _check_not_modified(request: Request, headers: dict[str, str]) -> bool:
     if request.method not in ("GET", "HEAD"):
-        return None
+        return False
 
     etag = headers.get("etag")
     if etag is None:
-        return None
+        return False
 
     values = request.headers.get("if-none-match")
     if values is None:
-        return None
+        return False
 
     match_list = [i.strip() for i in values.split(",")]
-    if etag not in match_list:
-        return None
+    if etag in match_list:
+        return True
 
-    not_modified_headers = {
-        key: value
-        for key, value in headers.items()
-        if key.lower() != "content-length"
-    }
-    return Response(status_code=304, headers=not_modified_headers)
+    return False
 
 
-def _read_chunks(fres: Traversable) -> Iterator[bytes]:
-    with fres.open("rb") as fp:
+def _read_chunks(file: Traversable) -> Iterator[bytes]:
+    with file.open("rb") as fp:
         while True:
             chunk = fp.read(_CHUNK_SIZE)
             if not chunk:
@@ -100,14 +90,16 @@ def _get_response(request: Request, path: str) -> Response | None:
     if headers is None:
         return None
 
-    not_modified_response = _check_not_modified(request, headers)
-    if not_modified_response is not None:
-        return not_modified_response
+    not_modified = _check_not_modified(request, headers)
+    if not_modified:
+        not_modified_headers = {
+            key: value
+            for key, value in headers.items()
+            if key.lower() != "content-length"
+        }
+        return Response(status_code=304, headers=not_modified_headers)
     else:
-        if not config.IS_ARCHIVE:
-            return FileResponse(target, headers=headers)
-        else:
-            return StreamingResponse(_read_chunks(target), headers=headers)
+        return StreamingResponse(_read_chunks(target), headers=headers)
 
 
 def endpoint(request: Request) -> Response:
