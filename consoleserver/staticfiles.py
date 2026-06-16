@@ -39,7 +39,11 @@ def _get_manifest_headers(path: str) -> dict[str, str] | None:
     assert isinstance(content_type, str)
 
     return {
+        # 'Cache-Control: no-cache' lets the browser store the response,
+        # but requires revalidation before reuse. With ETag, this enables
+        # If-None-Match and 304 Not Modified when the content is unchanged.
         "etag": etag,
+        "cache-control": "no-cache",
         "content-length": str(content_length),
         "content-type": content_type,
     }
