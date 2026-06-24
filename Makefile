@@ -84,29 +84,52 @@ $(pkgname).pyz:
 
 .PHONY:	src/staticfiles-manifest.json
 src/staticfiles-manifest.json:
+	$(MAKE) generate-gzip
 	@printf '{' > $@
 	@dir='src/staticfiles' && comma=''				&& \
-	(cd $$dir && find $$(ls -A)  -type f -print) | sort -u		   \
+	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
 	| while read file; do						   \
-	    echo "Generating ETag for $$file"				&& \
-	    etag=$$(openssl dgst -sha256 < $$dir/$$file			   \
+	    filepath=$$dir/$$file					&& \
+	    echo "Generating ETag for $$filepath"			&& \
+	    etag=$$(openssl dgst -sha256 < $$filepath			   \
 	            | sed 's/^.*[^0-9A-Fa-f]//')			&& \
-	    len=$$(wc -c  < $$dir/$$file)				&& \
-	    case "$$file" in						   \
+	    len=$$(wc -c < $$filepath)					&& \
+	    if [ -f $${filepath}.gz ]; then				   \
+	        gzlen=$$(wc -c < $${filepath}.gz)			;  \
+	    else							   \
+	        gzlen=0							;  \
+	    fi								&& \
+	    case "$$filepath" in					   \
 	    *.css)  t='css'						;; \
 	    *.html) t='html'						;; \
 	    *.js)   t='javascript'					;; \
-            *) echo "ERROR: unknown suffix for $$file" 1>&2; exit 1	;; \
+	    *) echo "ERROR: unknown suffix for $$filepath" 1>&2; exit 1	;; \
 	    esac							&& \
 	    type="text/$$t; charset=utf-8"				&& \
-            (								   \
+	    (								   \
 	        printf '%s\n' "$$comma"					&& \
-	        printf '    "%s": {\n' "$$file"				&& \
-	        printf '        "etag": "\\"%s\\"",\n' "$$etag"		&& \
-	        printf '        "content-length": %d,\n' "$$len"	&& \
-	        printf '        "content-type": "%s"\n' "$$type"	&& \
-	        printf '    }'						   \
+	        printf '  "%s": {\n' "$$file"				&& \
+	        printf '    "etag": "\\"%s\\"",\n' "$$etag"		&& \
+	        printf '    "content-length": %d,\n' "$$len"		&& \
+	        printf '    "content-type": "%s"' "$$type"		&& \
+	        if [ "$$gzlen" -gt 0 ]; then				   \
+	            printf ',\n'					&& \
+	            printf '    "gzip": {\n'				&& \
+	            printf '      "etag": "\\"gzip-%s\\"",\n' "$$etag"	&& \
+	            printf '      "content-length": %d\n' "$$gzlen"	&& \
+	            printf '    }'					;  \
+	        fi							&& \
+	        printf '\n  }'						   \
 	    ) >> $@							&& \
 	    comma=','							;  \
 	done
 	@printf '\n}\n' >> $@
+
+.PHONY:	generate-gzip
+generate-gzip:
+	@dir='src/staticfiles'						&& \
+	find $$dir -type f ! -name '*.gz' -print | sort -u		   \
+	| while read filepath; do					   \
+	    echo "Generating gzip for $$filepath"			&& \
+	    gzip < $$filepath > $${filepath}.gz || ! break		;  \
+	done
