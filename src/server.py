@@ -13,9 +13,6 @@ from typing import Any
 
 import socketio
 import starlette.applications
-from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware
-
 
 from . import config
 from . import globalvars as g
@@ -193,9 +190,6 @@ _starlette = starlette.applications.Starlette(
     routes=[
         starlette.routing.Route("/", staticfiles.endpoint),
         starlette.routing.Route("/static/{path:path}", staticfiles.endpoint),
-    ],
-    middleware=[
-        Middleware(GZipMiddleware, minimum_size=1024, compresslevel=6),
     ],
     lifespan=contextlib.asynccontextmanager(_lifespan),
 )
