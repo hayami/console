@@ -42,6 +42,14 @@ def _load_manifest() -> _Manifest:
 
 
 def _parse_accept_encoding(parse_str: str | None) -> dict[str, float]:
+    #
+    # Example input to parse (everything after : is parsed):
+    #   Accept-Encoding: br;q=0.9, gzip;q=1.0, zstd;q=0, *;q=0.1
+    #
+    # For this input, the return value is:
+    #   { "br": 0.9, "gzip": 1.0, "zstd": 0.0, "*": 0.1 }
+    #
+
     encodings: dict[str, float] = {}
 
     if parse_str is None:
@@ -151,10 +159,60 @@ def _get_headers(
     return headers
 
 
+def _compare_etag(etag: str, etag_values: str) -> bool:
+
+    def opaque_tag(tag: str) -> str | None:
+        if tag.startswith("W/"):
+            tag = tag[2:]
+        if len(tag) < 2:
+            return None
+        if tag.startswith('"') and tag.endswith('"'):
+            return tag
+        return None
+
+    def compare(tag: str) -> bool:
+        if not isinstance(tag, str):
+            return False
+        o_tag = opaque_tag(tag)
+        return (o_tag is not None and o_tag == opaque_etag)
+
+    def parse_tags(values: str) -> list[str] | None:
+        tags: list[str] = []
+        start = 0
+        in_quote = False
+        for pos, ch in enumerate(values):
+            if ch == '"':
+                in_quote = not in_quote
+                continue
+            if ch == "," and not in_quote:
+                tag = values[start:pos].strip()
+                if opaque_tag(tag) is None:
+                    return None
+                tags.append(tag)
+                start = pos + 1
+        if in_quote:
+            return None
+        tag = values[start:].strip()
+        if opaque_tag(tag) is None:
+            return None
+        tags.append(tag)
+        return tags
+
+    if etag_values.strip() == "*":
+        return True
+
+    opaque_etag = opaque_tag(etag)
+    if opaque_etag is None:
+        return False
+
+    tags = parse_tags(etag_values)
+    if tags is None:
+        return False
+
+    return any(compare(tag) for tag in tags)
+
+
 def _check_not_modified(request: Request, etag: str) -> bool:
-
-    # TODO XXX weak comparison を実装すること
-
     if request.method not in ("GET", "HEAD"):
         return False
 
@@ -162,23 +220,19 @@ def _check_not_modified(request: Request, etag: str) -> bool:
     if values is None:
         return False
 
-    match_list = [i.strip() for i in values.split(",")]
-    if etag in match_list:
-        return True
-
-    return False
-
-
-def _read_chunks(file: Traversable) -> Iterator[bytes]:
-    with file.open("rb") as fp:
-        while True:
-            chunk = fp.read(_CHUNK_SIZE)
-            if not chunk:
-                break
-            yield chunk
+    return _compare_etag(etag, values)
 
 
 def _get_response(request: Request, path: str) -> Response | None:
+
+    def read_chunks(file: Traversable) -> Iterator[bytes]:
+        with file.open("rb") as fp:
+            while True:
+                chunk = fp.read(_CHUNK_SIZE)
+                if not chunk:
+                    break
+                yield chunk
+
     ret = _decide_gzip(request, path)
     if ret:
         use_gzip, is_gzippable, target = ret
@@ -200,7 +254,7 @@ def _get_response(request: Request, path: str) -> Response | None:
         }
         return Response(status_code=304, headers=not_modified_headers)
     else:
-        return StreamingResponse(_read_chunks(target), headers=headers)
+        return StreamingResponse(read_chunks(target), headers=headers)
 
 
 def endpoint(request: Request) -> Response:
