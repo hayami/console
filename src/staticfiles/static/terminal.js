@@ -2,7 +2,7 @@
 /* eslint no-unused-vars: "error", no-undef: "error" */
 "use strict";
 
-window.onload = function () {
+window.addEventListener("load", function () {
   const term = new Terminal({
     allowProposedApi: true, // Unicode11Addon uses proposed API
     theme: {},
@@ -102,4 +102,4 @@ window.onload = function () {
     }, 100);
   });
   resizeObserver.observe(container);
-};
+});
