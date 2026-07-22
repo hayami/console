@@ -59,7 +59,7 @@ venv/bin/$(pip):
 .PHONY:	run-test
 run-test:
 	$(MAKE) pybase
-	$(MAKE) src/staticfiles-manifest.json
+	$(MAKE) manifest
 	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m src
 
 pybase:
@@ -72,7 +72,7 @@ run-pyz: $(pkgname).pyz
 	$(python) $(pkgname).pyz
 
 $(pkgname).pyz:
-	$(MAKE) src/staticfiles-manifest.json
+	$(MAKE) manifest
 	rm -rf $(pkgname).pkgs $(pkgname).pyz
 	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
 	    --quiet --no-cache-dir -r requirements.txt \
@@ -82,15 +82,43 @@ $(pkgname).pyz:
 	$(python) -m zipapp $(pkgname).pkgs \
 	    -m $(pkgname).main:main -o $(pkgname).pyz
 
+.PHONY:	manifest
+manifest:
+	$(MAKE) fetch-files
+	$(MAKE) generate-gzip
+	$(MAKE) src/staticfiles-manifest.json
+
+.PHONY:	fetch-files
+fetch-files:
+	@cat src/staticfiles/_index.html				   \
+	    | sed -E -n 's!.*"static/sites/([^"]*)".*!\1!p'		   \
+	    | sort -u							   \
+	    | while read target; do					   \
+	    echo "Fetching: https://$$target"				&& \
+	    curl -fsSL https://$$target --create-dirs			   \
+	        -o src/staticfiles/static/sites/$$target || ! break	;  \
+	done
+
+.PHONY:	generate-gzip
+generate-gzip:
+	@dir='src/staticfiles'						&& \
+	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
+	| while read file; do						   \
+	    filepath=$$dir/$$file					&& \
+	    echo "Generating gzip for $$file"				&& \
+	    gzip < $$filepath > $${filepath}.gz || ! break		;  \
+	done
+
 .PHONY:	src/staticfiles-manifest.json
 src/staticfiles-manifest.json:
+	$(MAKE) fetch-files
 	$(MAKE) generate-gzip
 	@printf '{' > $@
 	@dir='src/staticfiles' && comma=''				&& \
 	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
 	| while read file; do						   \
 	    filepath=$$dir/$$file					&& \
-	    echo "Generating ETag for $$filepath"			&& \
+	    echo "Generating ETag for $$file"				&& \
 	    etag=$$(openssl dgst -sha256 < $$filepath			   \
 	            | sed 's/^.*[^0-9A-Fa-f]//')			&& \
 	    len=$$(wc -c < $$filepath)					&& \
@@ -124,12 +152,3 @@ src/staticfiles-manifest.json:
 	    comma=','							;  \
 	done
 	@printf '\n}\n' >> $@
-
-.PHONY:	generate-gzip
-generate-gzip:
-	@dir='src/staticfiles'						&& \
-	find $$dir -type f ! -name '*.gz' -print | sort -u		   \
-	| while read filepath; do					   \
-	    echo "Generating gzip for $$filepath"			&& \
-	    gzip < $$filepath > $${filepath}.gz || ! break		;  \
-	done

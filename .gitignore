@@ -8,3 +8,4 @@ consoleserver.pkgs/
 consoleserver.pyz
 src/staticfiles-manifest.json
 src/staticfiles/**/*.gz
+src/staticfiles/static/sites/
