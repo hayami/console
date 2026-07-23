@@ -1,8 +1,4 @@
 py3ver	= 3.14
-python3	= python$(py3ver)
-python	= $(python3)
-pip3	= pip$(py3ver)
-pip	= $(pip3)
 
 pkgname	= consoleserver
 
@@ -47,39 +43,39 @@ check-py: venv/bin/flake8 venv/bin/mypy
 	venv/bin/mypy --strict --ignore-missing-imports \
 	    --python-version $(py3ver) --no-sqlite-cache src/
 
-venv/bin/flake8: venv/bin/$(pip)
-	venv/bin/$(pip) install --quiet flake8
+venv/bin/flake8: venv/bin/pip$(py3ver)
+	venv/bin/pip$(py3ver) install --quiet flake8
 
-venv/bin/mypy: venv/bin/$(pip)
-	venv/bin/$(pip) install --quiet mypy
+venv/bin/mypy: venv/bin/pip$(py3ver)
+	venv/bin/pip$(py3ver) install --quiet mypy
 
-venv/bin/$(pip):
-	$(python) -m venv venv
+venv/bin/pip$(py3ver):
+	python$(py3ver) -m venv venv
 
 .PHONY:	run-test
 run-test:
 	$(MAKE) pybase
 	$(MAKE) manifest
-	PYTHONUSERBASE=$(PWD)/pybase $(python) -B -m src
+	PYTHONUSERBASE=$(PWD)/pybase python$(py3ver) -B -m src
 
 pybase:
-	PYTHONUSERBASE=$(PWD)/pybase $(pip) install \
+	PYTHONUSERBASE=$(PWD)/pybase pip3 install \
 	    --quiet --no-cache-dir -r requirements.txt \
 	    --user --break-system-packages --no-warn-script-location
 
 .PHONY:	run-pyz
 run-pyz: $(pkgname).pyz
-	$(python) $(pkgname).pyz
+	python$(py3ver) $(pkgname).pyz
 
 $(pkgname).pyz:
 	$(MAKE) manifest
 	rm -rf $(pkgname).pkgs $(pkgname).pyz
-	PIP_DISABLE_PIP_VERSION_CHECK=1 $(pip) install \
+	PIP_DISABLE_PIP_VERSION_CHECK=1 pip3 install \
 	    --quiet --no-cache-dir -r requirements.txt \
             --target $(pkgname).pkgs
 	cp -a src $(pkgname).pkgs/$(pkgname)
 	rm -rf $(pkgname).pkgs/$(pkgname)/__pycache__
-	$(python) -m zipapp $(pkgname).pkgs \
+	python$(py3ver) -m zipapp $(pkgname).pkgs \
 	    -m $(pkgname).main:main -o $(pkgname).pyz
 
 .PHONY:	manifest
