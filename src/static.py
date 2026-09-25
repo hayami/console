@@ -109,8 +109,8 @@ def _decide_gzip(
     if p.is_absolute() or ".." in path_parts:
         return None
     gzip_parts = (*path_parts[:-1], path_parts[-1] + ".gz")
-    path_target = config.STATICFILES.joinpath(*path_parts)
-    gzip_target = config.STATICFILES.joinpath(*gzip_parts)
+    path_target = config.DOCROOT.joinpath(*path_parts)
+    gzip_target = config.DOCROOT.joinpath(*gzip_parts)
 
     entry = _load_manifest().get(path)
     if entry is None:
@@ -259,7 +259,7 @@ def _get_response(request: Request, path: str) -> Response | None:
 
 def endpoint(request: Request) -> Response:
     path = request.path_params.get("path")
-    path = "_index.html" if path is None else f"static/{path}"
+    path = "_index.html" if not path else path
     response = _get_response(request, path)
     if response is not None:
         return response
