@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-STATICFILES: Traversable
+DOCROOT: Traversable
 MANIFEST: Traversable
 
 
@@ -20,16 +20,16 @@ _archive = getattr(_loader, "archive", None)
 if _archive is None:
     IS_ARCHIVE = False
     _BASE_DIR = Path(__file__).resolve().parent.parent
-    STATICFILES = Path(__file__).resolve().parent / "staticfiles"
-    MANIFEST = Path(__file__).resolve().parent / "staticfiles-manifest.json"
+    DOCROOT = _BASE_DIR / "docroot"
+    MANIFEST = _BASE_DIR / "docroot.json"
 else:
     IS_ARCHIVE = True
     _BASE_DIR = Path(_archive).resolve().parent
-    STATICFILES = resources.files(__package__) / "staticfiles"
-    MANIFEST = resources.files(__package__) / "staticfiles-manifest.json"
+    DOCROOT = resources.files(__package__) / "docroot"
+    MANIFEST = resources.files(__package__) / "docroot.json"
 
 _CONFIG_DIR = _BASE_DIR
-_CONFIG_FILE = "config.json5"
+_CONFIG_FILE = "config.jsonc"
 
 
 def _expand_env(obj: Any) -> Any:
@@ -92,41 +92,6 @@ else:
     raise SystemExit(
         f"{_CONFIG_FILE}: server.cors_allowed_origins must be a string"
         " or a list of strings"
-    )
-
-_keyin_timeout_raw = _server_config.get("keyin_timeout", 0)
-try:
-    if isinstance(_keyin_timeout_raw, bool):
-        raise ValueError
-    elif isinstance(_keyin_timeout_raw, int):
-        KEYIN_TIMEOUT: int = _keyin_timeout_raw
-    elif isinstance(_keyin_timeout_raw, str):
-        KEYIN_TIMEOUT = int(_keyin_timeout_raw.strip())
-    else:
-        raise ValueError
-    if KEYIN_TIMEOUT < 0:
-        raise ValueError
-except (TypeError, ValueError):
-    raise SystemExit(
-        f"{_CONFIG_FILE}: server.keyin_timeout must be a non-negative integer"
-    )
-
-_no_session_timeout_raw = _server_config.get("no_session_timeout", 0)
-try:
-    if isinstance(_no_session_timeout_raw, bool):
-        raise ValueError
-    elif isinstance(_no_session_timeout_raw, int):
-        NO_SESSION_TIMEOUT: int = _no_session_timeout_raw
-    elif isinstance(_no_session_timeout_raw, str):
-        NO_SESSION_TIMEOUT = int(_no_session_timeout_raw.strip())
-    else:
-        raise ValueError
-    if NO_SESSION_TIMEOUT < 0:
-        raise ValueError
-except (TypeError, ValueError):
-    raise SystemExit(
-        f"{_CONFIG_FILE}: server.no_session_timeout must be a non-negative"
-        " integer"
     )
 
 _shell_config: dict[str, Any] = _config.get("shell", {})

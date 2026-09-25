@@ -1,11 +1,9 @@
 .mypy_cache/
 __pycache__/
-node_modules/
-npm-cache/
 pybase/
 venv/
-consoleserver.pkgs/
-consoleserver.pyz
-src/staticfiles-manifest.json
-src/staticfiles/**/*.gz
-src/staticfiles/static/sites/
+terminalserver.pkgs/
+terminalserver.pyz
+docroot.json
+docroot/**/*.gz
+docroot/sites/

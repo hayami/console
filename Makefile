@@ -1,13 +1,25 @@
-py3ver	= 3.14
+py3ver	= 3
+#py3ver	= 3.12
 
-pkgname	= consoleserver
+pkgname	= terminalserver
+
+export	LC_ALL = C
+SRCS	:= $(shell find src -type f -print | sort -u)
+LOCALS	:= $(shell find docroot -name sites -prune -o -type f -print \
+	| grep -E '\.(css|html|js)$$' | sort -u)
+REMOTES	:= $(shell sed -E -n 's!.*"(sites/[^"]*)".*!docroot/\1!p' \
+	< docroot/_index.html | sort -u)
+DOCS	= $(LOCALS) $(REMOTES)
+GZIPS	= $(DOCS:=.gz)
+
+BIOME_URL = https://github.com/biomejs/biome/releases/download/@biomejs/biome@2.5.14/biome-linux-x64
 
 MAKEFLAGS += --no-print-directory
 
-.PHONY:	default
+.PHONY: default
 default: usage
 
-.PHONY:	usage
+.PHONY: usage
 usage:
 	@echo 'make usage'
 	@echo 'make distclean'
@@ -15,33 +27,41 @@ usage:
 	@echo 'make check-all'
 	@echo 'make check-js'
 	@echo 'make check-py'
-	@echo 'make run-test'
-	@echo 'make run-pyz'
+	@echo 'make run-test-server'
+	@echo 'make run-pyz-server'
 
-.PHONY:	distclean
+.PHONY: distclean
 distclean:
 	git clean -fdx
 
-.PHONY:	clean
+.PHONY: clean
 clean:
 	git clean -fdx --exclude=$(pkgname).pyz
 
-.PHONY:	check-all
+.PHONY: check-all
 check-all: check-js check-py
 
-.PHONY:	check-js
-check-js: node_modules
-	npm run lint
-	npm run check
+.PHONY: check-js
+check-js:
+	@if [ -x ./biome ]; then \
+	    biome=./biome; \
+	else \
+	    if ! biome=$$(which biome 2> /dev/null); then \
+	        (set -x; curl -fL $(BIOME_URL) -o biome) \
+	        && chmod +x biome \
+	        && biome=./biome; \
+	    fi; \
+	fi; \
+	set -x; $$biome check docroot/terminal.js
 
-node_modules:
-	npm install --cache npm-cache --quiet --save-dev
+#.PHONY: format-js
+#format-js:
+#	biome format --write docroot/terminal.js
 
-.PHONY:	check-py
+.PHONY: check-py
 check-py: venv/bin/flake8 venv/bin/mypy
 	venv/bin/flake8 src/
-	venv/bin/mypy --strict --ignore-missing-imports \
-	    --python-version $(py3ver) --no-sqlite-cache src/
+	venv/bin/mypy --strict --ignore-missing-imports --no-sqlite-cache src/
 
 venv/bin/flake8: venv/bin/pip$(py3ver)
 	venv/bin/pip$(py3ver) install --quiet flake8
@@ -52,65 +72,33 @@ venv/bin/mypy: venv/bin/pip$(py3ver)
 venv/bin/pip$(py3ver):
 	python$(py3ver) -m venv venv
 
-.PHONY:	run-test
-run-test:
-	$(MAKE) pybase
-	$(MAKE) manifest
+.PHONY: run-test-server
+run-test-server: pybase docroot.json
 	PYTHONUSERBASE=$(PWD)/pybase python$(py3ver) -B -m src
 
-pybase:
+pybase: requirements.txt
 	PYTHONUSERBASE=$(PWD)/pybase pip3 install \
 	    --quiet --no-cache-dir -r requirements.txt \
 	    --user --break-system-packages --no-warn-script-location
 
-.PHONY:	run-pyz
-run-pyz: $(pkgname).pyz
+.PHONY: run-pyz-server
+run-pyz-server: $(pkgname).pyz
 	python$(py3ver) $(pkgname).pyz
 
-$(pkgname).pyz:
-	$(MAKE) manifest
+$(pkgname).pyz: docroot.json requirements.txt $(SRCS)
 	rm -rf $(pkgname).pkgs $(pkgname).pyz
 	PIP_DISABLE_PIP_VERSION_CHECK=1 pip3 install \
 	    --quiet --no-cache-dir -r requirements.txt \
-            --target $(pkgname).pkgs
-	cp -a src $(pkgname).pkgs/$(pkgname)
+	    --target $(pkgname).pkgs
+	mkdir $(pkgname).pkgs/$(pkgname)
+	cp -a docroot docroot.json src/* $(pkgname).pkgs/$(pkgname)/
 	rm -rf $(pkgname).pkgs/$(pkgname)/__pycache__
 	python$(py3ver) -m zipapp $(pkgname).pkgs \
 	    -m $(pkgname).main:main -o $(pkgname).pyz
 
-.PHONY:	manifest
-manifest:
-	$(MAKE) fetch-files
-	$(MAKE) generate-gzip
-	$(MAKE) src/staticfiles-manifest.json
-
-.PHONY:	fetch-files
-fetch-files:
-	@cat src/staticfiles/_index.html				   \
-	    | sed -E -n 's!.*"static/sites/([^"]*)".*!\1!p'		   \
-	    | sort -u							   \
-	    | while read target; do					   \
-	    echo "Fetching: https://$$target"				&& \
-	    curl -fsSL https://$$target --create-dirs			   \
-	        -o src/staticfiles/static/sites/$$target || ! break	;  \
-	done
-
-.PHONY:	generate-gzip
-generate-gzip:
-	@dir='src/staticfiles'						&& \
-	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
-	| while read file; do						   \
-	    filepath=$$dir/$$file					&& \
-	    echo "Generating gzip for $$file"				&& \
-	    gzip < $$filepath > $${filepath}.gz || ! break		;  \
-	done
-
-.PHONY:	src/staticfiles-manifest.json
-src/staticfiles-manifest.json:
-	$(MAKE) fetch-files
-	$(MAKE) generate-gzip
+docroot.json: $(GZIPS)
 	@printf '{' > $@
-	@dir='src/staticfiles' && comma=''				&& \
+	@dir='docroot' && comma=''					&& \
 	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
 	| while read file; do						   \
 	    filepath=$$dir/$$file					&& \
@@ -148,3 +136,12 @@ src/staticfiles-manifest.json:
 	    comma=','							;  \
 	done
 	@printf '\n}\n' >> $@
+
+$(GZIPS): %.gz: %
+	@gzip < $< > $@
+
+$(REMOTES):
+	@out=$@ \
+	&& url=https://$${out#docroot/sites/} \
+	&& echo "Fetching: $$url" \
+	&& curl -fL --create-dirs -o $$out $$url
