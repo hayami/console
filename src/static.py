@@ -109,8 +109,8 @@ def _decide_gzip(
     if p.is_absolute() or ".." in path_parts:
         return None
     gzip_parts = (*path_parts[:-1], path_parts[-1] + ".gz")
-    path_target = config.STATICFILES.joinpath(*path_parts)
-    gzip_target = config.STATICFILES.joinpath(*gzip_parts)
+    path_target = config.DOCROOT.joinpath(*path_parts)
+    gzip_target = config.DOCROOT.joinpath(*gzip_parts)
 
     entry = _load_manifest().get(path)
     if entry is None:

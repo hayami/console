@@ -4,8 +4,8 @@ node_modules/
 npm-cache/
 pybase/
 venv/
-consoleserver.pkgs/
-consoleserver.pyz
-src/staticfiles-manifest.json
-src/staticfiles/**/*.gz
-src/staticfiles/static/sites/
+terminalserver.pkgs/
+terminalserver.pyz
+src/docroot-manifest.json
+src/docroot/**/*.gz
+src/docroot/static/sites/

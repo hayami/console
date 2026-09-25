@@ -1,6 +1,7 @@
-py3ver	= 3.14
+py3ver	= 3
+#py3ver	= 3.12
 
-pkgname	= consoleserver
+pkgname	= terminalserver
 
 MAKEFLAGS += --no-print-directory
 
@@ -30,18 +31,27 @@ clean:
 check-all: check-js check-py
 
 .PHONY:	check-js
-check-js: node_modules
-	npm run lint
-	npm run check
+BIOME_URL = https://github.com/biomejs/biome/releases/download/@biomejs/biome@2.5.14/biome-linux-x64
+check-js:
+	@if [ -x ./biome ]; then \
+	    biome=./biome; \
+	else \
+	    if ! biome=$$(which biome 2> /dev/null); then \
+	        (set -x; curl -L $(BIOME_URL) -o biome) \
+	        && chmod +x biome \
+	        && biome=./biome; \
+	    fi; \
+	fi; \
+	set -x; $$biome check src/docroot/static/terminal.js
 
-node_modules:
-	npm install --cache npm-cache --quiet --save-dev
+#.PHONY:format-js
+#format-js:
+#	biome format --write src/docroot/static/terminal.js
 
 .PHONY:	check-py
 check-py: venv/bin/flake8 venv/bin/mypy
 	venv/bin/flake8 src/
-	venv/bin/mypy --strict --ignore-missing-imports \
-	    --python-version $(py3ver) --no-sqlite-cache src/
+	venv/bin/mypy --strict --ignore-missing-imports --no-sqlite-cache src/
 
 venv/bin/flake8: venv/bin/pip$(py3ver)
 	venv/bin/pip$(py3ver) install --quiet flake8
@@ -82,22 +92,22 @@ $(pkgname).pyz:
 manifest:
 	$(MAKE) fetch-files
 	$(MAKE) generate-gzip
-	$(MAKE) src/staticfiles-manifest.json
+	$(MAKE) src/docroot-manifest.json
 
 .PHONY:	fetch-files
 fetch-files:
-	@cat src/staticfiles/_index.html				   \
+	@cat src/docroot/_index.html					   \
 	    | sed -E -n 's!.*"static/sites/([^"]*)".*!\1!p'		   \
 	    | sort -u							   \
 	    | while read target; do					   \
 	    echo "Fetching: https://$$target"				&& \
 	    curl -fsSL https://$$target --create-dirs			   \
-	        -o src/staticfiles/static/sites/$$target || ! break	;  \
+	        -o src/docroot/static/sites/$$target || ! break	;	   \
 	done
 
 .PHONY:	generate-gzip
 generate-gzip:
-	@dir='src/staticfiles'						&& \
+	@dir='src/docroot'						&& \
 	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
 	| while read file; do						   \
 	    filepath=$$dir/$$file					&& \
@@ -105,12 +115,12 @@ generate-gzip:
 	    gzip < $$filepath > $${filepath}.gz || ! break		;  \
 	done
 
-.PHONY:	src/staticfiles-manifest.json
-src/staticfiles-manifest.json:
+.PHONY:	src/docroot-manifest.json
+src/docroot-manifest.json:
 	$(MAKE) fetch-files
 	$(MAKE) generate-gzip
 	@printf '{' > $@
-	@dir='src/staticfiles' && comma=''				&& \
+	@dir='src/docroot' && comma=''					&& \
 	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
 	| while read file; do						   \
 	    filepath=$$dir/$$file					&& \
