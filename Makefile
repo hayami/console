@@ -67,6 +67,16 @@ pybase:
 run-pyz: $(pkgname).pyz
 	python$(py3ver) $(pkgname).pyz
 
+.PHONY:	run-on-sakura-shared-server
+run-on-sakura-shared-server: $(pkgname).pyz
+	@printf '\033[1m%s\033[0m\n' \
+	'Open the following URL in your browser: https://soba.undo.jp/console'
+	mkdir -p run
+	mkdir -p -m 0700 run/consoleserver-zzz.999
+	cd run/consoleserver-zzz.999 && \
+	$$HOME/sys/local/bin/python3.14 ../../$(pkgname).pyz
+	rm -rf run
+
 $(pkgname).pyz:
 	$(MAKE) manifest
 	rm -rf $(pkgname).pkgs $(pkgname).pyz
