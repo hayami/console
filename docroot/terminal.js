@@ -2,7 +2,7 @@
 /* eslint no-unused-vars: "error", no-undef: "error" */
 "use strict";
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   const clientOptions = {
     unicodeVersion: "11",
   };
@@ -41,6 +41,14 @@ window.addEventListener("load", () => {
     brightCyan: "#2b747c",
     brightWhite: "#5c5c5c",
   };
+
+  const start = performance.now();
+  await WebFontsAddon.loadFonts([
+    "Noto Sans Mono",
+    "Kosugi Maru",
+  ]);
+  const end = performance.now();
+  console.log(`WebFont load: ${(end - start).toFixed(2)} ms`);
 
   const term = new Terminal({
     allowProposedApi: true, // Unicode11Addon uses proposed API

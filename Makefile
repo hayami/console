@@ -9,6 +9,8 @@ LOCALS	:= $(shell find docroot -name sites -prune -o -type f -print \
 	| grep -E '\.(css|html|js)$$' | sort -u)
 REMOTES	:= $(shell sed -E -n 's!.*"(sites/[^"]*)".*!docroot/\1!p' \
 	< docroot/_index.html | sort -u)
+FONTS	:= $(shell sed -E -n 's!.*"(sites/[^"]*)".*!docroot/\1!p' \
+	< docroot/terminal.css | sort -u)
 DOCS	= $(LOCALS) $(REMOTES)
 GZIPS	= $(DOCS:=.gz)
 
@@ -36,7 +38,7 @@ distclean:
 
 .PHONY: clean
 clean:
-	git clean -fdx --exclude=$(pkgname).pyz
+	git clean -fdx --exclude=docroot/sites
 
 .PHONY: check-all
 check-all: check-js check-py
@@ -96,7 +98,7 @@ $(pkgname).pyz: docroot.json requirements.txt $(SRCS)
 	python$(py3ver) -m zipapp $(pkgname).pkgs \
 	    -m $(pkgname).main:main -o $(pkgname).pyz
 
-docroot.json: $(GZIPS)
+docroot.json: $(GZIPS) $(FONTS)
 	@printf '{' > $@
 	@dir='docroot' && comma=''					&& \
 	find $$dir -type f ! -name '*.gz' -printf '%P\n' | sort -u	   \
@@ -112,12 +114,13 @@ docroot.json: $(GZIPS)
 	        gzlen=0							;  \
 	    fi								&& \
 	    case "$$filepath" in					   \
-	    *.css)  t='css'						;; \
-	    *.html) t='html'						;; \
-	    *.js)   t='javascript'					;; \
+	    *.css)  t='text/css'					;; \
+	    *.html) t='text/html'					;; \
+	    *.js)   t='text/javascript'					;; \
+	    *.ttf)  t='font/ttf'					;; \
 	    *) echo "ERROR: unknown suffix for $$filepath" 1>&2; exit 1	;; \
 	    esac							&& \
-	    type="text/$$t; charset=utf-8"				&& \
+	    type="$$t; charset=utf-8"					&& \
 	    (								   \
 	        printf '%s\n' "$$comma"					&& \
 	        printf '  "%s": {\n' "$$file"				&& \
@@ -140,7 +143,7 @@ docroot.json: $(GZIPS)
 $(GZIPS): %.gz: %
 	@gzip < $< > $@
 
-$(REMOTES):
+$(REMOTES) $(FONTS):
 	@out=$@ \
 	&& url=https://$${out#docroot/sites/} \
 	&& echo "Fetching: $$url" \
