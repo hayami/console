@@ -7,8 +7,39 @@ window.addEventListener("load", () => {
     unicodeVersion: "11",
   };
   const terminalOptions = {
+    cursorBlink: false,
+    cursorInactiveStyle: "outline",
+    cursorStyle: "block",
+    fontFamily: "'Noto Sans Mono', 'Kosugi Maru', monospace",
+    fontSize: 14,
+    fontWeight: "500",
+    fontWeightBold: "700",
+    macOptionIsMeta: true,
   };
   const terminalTheme = {
+    background: "#f0f0ca",
+    foreground: "#353535",
+    cursor: "#d33333",
+    cursorAccent: "#f0f0ca",
+    selectionBackground: "#d7d7d7",
+    selectionInactiveBackground: "#d7d7d7",
+    selectionForeground: "#353535",
+    black: "#f0f0ca",
+    red: "#a8334c",
+    green: "#4f6c31",
+    yellow: "#944927",
+    blue: "#286486",
+    magenta: "#88507d",
+    cyan: "#3b8992",
+    white: "#353535",
+    brightBlack: "#acac89",
+    brightRed: "#94253e",
+    brightGreen: "#3f5a22",
+    brightYellow: "#803d1c",
+    brightBlue: "#1d5573",
+    brightMagenta: "#7b3b70",
+    brightCyan: "#2b747c",
+    brightWhite: "#5c5c5c",
   };
 
   const term = new Terminal({
