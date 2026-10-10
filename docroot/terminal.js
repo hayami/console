@@ -43,10 +43,7 @@ window.addEventListener("load", async () => {
   };
 
   const start = performance.now();
-  await WebFontsAddon.loadFonts([
-    "Noto Sans Mono",
-    "Kosugi Maru",
-  ]);
+  await WebFontsAddon.loadFonts(["Noto Sans Mono", "Kosugi Maru"]);
   const end = performance.now();
   console.log(`WebFont load: ${(end - start).toFixed(2)} ms`);
 
