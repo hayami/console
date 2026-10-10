@@ -26,17 +26,17 @@ html, body {
 @font-face {
   font-family: "Noto Sans Mono";
   font-weight: 500;
-  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Medium.ttf") format("truetype");
+  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Medium.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Noto Sans Mono";
   font-weight: 700;
-  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Bold.ttf") format("truetype");
+  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Bold.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Kosugi Maru";
   font-weight: 500;
-  src: url("sites/github.com/googlefonts/kosugi-maru/raw/refs/heads/main/fonts/ttf/KosugiMaru-Regular.ttf") format("truetype");
+  src: url("sites/github.com/googlefonts/kosugi-maru/raw/refs/heads/main/fonts/ttf/KosugiMaru-Regular.woff2") format("woff2");
 }

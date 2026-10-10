@@ -38,7 +38,7 @@ distclean:
 
 .PHONY: clean
 clean:
-	git clean -fdx --exclude=docroot/sites
+	git clean -fdx --exclude=venv --exclude=docroot/sites
 
 .PHONY: check-all
 check-all: check-js check-py
@@ -71,6 +71,9 @@ venv/bin/flake8: venv/bin/pip$(py3ver)
 venv/bin/mypy: venv/bin/pip$(py3ver)
 	venv/bin/pip$(py3ver) install --quiet mypy
 
+venv/bin/fonttools: venv/bin/pip$(py3ver)
+	venv/bin/pip$(py3ver) install --quiet 'fonttools[woff]'
+
 venv/bin/pip$(py3ver):
 	python$(py3ver) -m venv venv
 
@@ -93,7 +96,9 @@ $(pkgname).pyz: docroot.json requirements.txt $(SRCS)
 	    --quiet --no-cache-dir -r requirements.txt \
 	    --target $(pkgname).pkgs
 	mkdir $(pkgname).pkgs/$(pkgname)
-	cp -a docroot docroot.json src/* $(pkgname).pkgs/$(pkgname)/
+	tar --exclude='*.ttf' -cf - docroot.json docroot \
+	| tar -C $(pkgname).pkgs/$(pkgname) -xpf -
+	cp -a src/* $(pkgname).pkgs/$(pkgname)/
 	rm -rf $(pkgname).pkgs/$(pkgname)/__pycache__
 	python$(py3ver) -m zipapp $(pkgname).pkgs \
 	    -m $(pkgname).main:main -o $(pkgname).pyz
@@ -114,13 +119,13 @@ docroot.json: $(GZIPS) $(FONTS)
 	        gzlen=0							;  \
 	    fi								&& \
 	    case "$$filepath" in					   \
-	    *.css)  t='text/css'					;; \
-	    *.html) t='text/html'					;; \
-	    *.js)   t='text/javascript'					;; \
-	    *.ttf)  t='font/ttf'					;; \
+	    *.css)   type='text/css; charset=utf-8'			;; \
+	    *.html)  type='text/html; charset=utf-8'			;; \
+	    *.js)    type='text/javascript; charset=utf-8'		;; \
+	    *.ttf)   continue						;; \
+	    *.woff2) type='font/woff2'					;; \
 	    *) echo "ERROR: unknown suffix for $$filepath" 1>&2; exit 1	;; \
 	    esac							&& \
-	    type="$$t; charset=utf-8"					&& \
 	    (								   \
 	        printf '%s\n' "$$comma"					&& \
 	        printf '  "%s": {\n' "$$file"				&& \
@@ -143,7 +148,10 @@ docroot.json: $(GZIPS) $(FONTS)
 $(GZIPS): %.gz: %
 	@gzip < $< > $@
 
-$(REMOTES) $(FONTS):
+$(FONTS): %.woff2: %.ttf venv/bin/fonttools
+	venv/bin/python -m fontTools.ttLib.woff2 compress $< -o $@
+
+$(REMOTES) $(FONTS:.woff2=.ttf):
 	@out=$@ \
 	&& url=https://$${out#docroot/sites/} \
 	&& echo "Fetching: $$url" \
