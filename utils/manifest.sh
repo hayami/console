@@ -43,4 +43,4 @@ for etag, len, gzlen, type, path in records:
         }
 
 print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
-exit(ret)'
+sys.exit(ret)'
