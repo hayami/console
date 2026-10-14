@@ -14,7 +14,8 @@ html, body {
   height: 100%;
   box-sizing: border-box;
   padding: 1px 1px 0.30em 0.30em;
-  background-color: var(--terminal-background);
+  // background-color: var(--terminal-background);
+  background-color: color-mix(in srgb, var(--terminal-background) 90%, #000000); // 暫定
 }
 
 #terminal-container {
