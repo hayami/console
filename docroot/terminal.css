@@ -24,8 +24,8 @@ html, body {
 
 @font-face {
   font-family: "Noto Sans Mono";
-  font-weight: 500;
-  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Medium.woff2") format("woff2");
+  font-weight: 400;
+  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Regular.woff2") format("woff2");
 }
 
 @font-face {
@@ -36,6 +36,6 @@ html, body {
 
 @font-face {
   font-family: "Kosugi Maru";
-  font-weight: 500;
+  font-weight: 400;
   src: url("sites/github.com/googlefonts/kosugi-maru/raw/refs/heads/main/fonts/ttf/KosugiMaru-Regular.woff2") format("woff2");
 }
