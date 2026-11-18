@@ -23,15 +23,15 @@ html, body {
 }
 
 @font-face {
-  font-family: "Noto Sans Mono";
+  font-family: "Inconsolata";
   font-weight: 400;
-  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Regular.woff2") format("woff2");
+  src: url("sites/cdn.jsdelivr.net/npm/@fontsource/inconsolata@5.3.0/files/inconsolata-latin-400-normal.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: "Noto Sans Mono";
+  font-family: "Inconsolata";
   font-weight: 700;
-  src: url("sites/cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansMono/hinted/ttf/NotoSansMono-Bold.woff2") format("woff2");
+  src: url("sites/cdn.jsdelivr.net/npm/@fontsource/inconsolata@5.3.0/files/inconsolata-latin-700-normal.woff2") format("woff2");
 }
 
 @font-face {

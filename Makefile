@@ -149,15 +149,22 @@ docroot.json: $(GZIPS) $(FONTS)
 $(GZIPS): %.gz: %
 	@gzip < $< > $@
 
-$(FONTS): %.woff2: downloads/%.ttf venv/bin/fonttools
+FONTS_TTF   := $(foreach f,$(FONTS),$(if $(findstring fontsource,$(f)),,$(f)))
+FONTS_WOFF2 := $(foreach f,$(FONTS),$(if $(findstring fontsource,$(f)),$(f)))
+
+$(FONTS_TTF): %.woff2: downloads/%.ttf venv/bin/fonttools
 	@mkdir -p $$(dirname $@)
 	venv/bin/python$(py3ver) -m fontTools.ttLib.woff2 compress $< -o $@
+
+$(FONTS_WOFF2): %.woff2: downloads/%.woff2
+	@mkdir -p $$(dirname $@)
+	@cp $< $@
 
 $(REMOTES): %: downloads/%
 	@mkdir -p $$(dirname $@)
 	@cp $< $@
 
-$(addprefix downloads/,$(REMOTES) $(FONTS:.woff2=.ttf)):
+$(addprefix downloads/,$(REMOTES) $(FONTS_TTF:.woff2=.ttf) $(FONTS_WOFF2)):
 	@out=$@ \
 	&& url=https://$${out#downloads/docroot/sites/} \
 	&& echo "Fetching: $$url" \

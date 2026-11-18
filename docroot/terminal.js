@@ -10,11 +10,11 @@ window.addEventListener("load", async () => {
     cursorBlink: false,
     cursorInactiveStyle: "outline",
     cursorStyle: "block",
-    fontFamily: "'Noto Sans Mono', 'Kosugi Maru', monospace",
-    fontSize: 14,
+    fontFamily: "Inconsolata, 'Kosugi Maru', monospace",
+    fontSize: 16,
     fontWeight: "400",
     fontWeightBold: "700",
-    lineHeight: 1.0,
+    lineHeight: 1.2,
     macOptionIsMeta: true,
   };
   const terminalTheme = {
@@ -44,7 +44,7 @@ window.addEventListener("load", async () => {
   };
 
   const start = performance.now();
-  await WebFontsAddon.loadFonts(["Noto Sans Mono", "Kosugi Maru"]);
+  await WebFontsAddon.loadFonts(["Inconsolata", "Kosugi Maru"]);
   const end = performance.now();
   console.log(`WebFont load: ${(end - start).toFixed(2)} ms`);
 
